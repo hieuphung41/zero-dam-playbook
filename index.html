@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zero Dam Budget Playbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<style>
+/* Layout: single reading column (72ch) with full-width bands for the map and the route timeline; briefing-document tone, not a landing page. */
+:root{
+  --bg:#f3f4f0; --surface:#ffffff; --fg:#1c2220; --muted:#5b6662; --line:#d5d9d3;
+  --accent:#1f6b5c; --accent-soft:#dfeee9;
+  --gold:#a7781a; --gold-soft:#f6ecd2;
+  --red:#b23a2f; --red-soft:#f7e1dd;
+  --blue:#2f5f8f; --blue-soft:#e0eaf4;
+  --display:"Chakra Petch","Be Vietnam Pro",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1d2321; --fg:#e8ebe6; --muted:#9aa49f; --line:#323b37;
+  --accent:#5fc3a8; --accent-soft:#1c312b;
+  --gold:#e0b04a; --gold-soft:#3a3016;
+  --red:#ef7f72; --red-soft:#3d2320;
+  --blue:#7fb0e0; --blue-soft:#1d2b3a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1d2321; --fg:#e8ebe6; --muted:#9aa49f; --line:#323b37;
+  --accent:#5fc3a8; --accent-soft:#1c312b;
+  --gold:#e0b04a; --gold-soft:#3a3016;
+  --red:#ef7f72; --red-soft:#3d2320;
+  --blue:#7fb0e0; --blue-soft:#1d2b3a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6;margin:0;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:76ch;margin:0 auto}
+h1,h2,h3{font-family:var(--display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(2rem,6vw,3rem);font-weight:700;letter-spacing:.01em}
+h2{font-size:1.5rem;font-weight:600;margin-top:2.8rem;padding-top:1rem;border-top:2px solid var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-top:1.6rem}
+p{margin:.8rem 0}
+.eyebrow{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;color:var(--accent);font-weight:600}
+.lede{font-size:1.08rem;color:var(--muted);margin-top:.6rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;font-size:.85rem;color:var(--muted);margin-top:1rem}
+.chip{display:inline-block;font-family:var(--display);font-size:.72rem;font-weight:600;letter-spacing:.04em;padding:.1em .5em;border-radius:3px;vertical-align:middle;white-space:nowrap}
+.m{background:var(--accent-soft);color:var(--accent)}
+.s{background:var(--blue-soft);color:var(--blue)}
+.u{background:var(--gold-soft);color:var(--gold)}
+.d{background:var(--red-soft);color:var(--red)}
+.legend{display:flex;flex-wrap:wrap;gap:.6rem;font-size:.85rem;color:var(--muted);margin:1rem 0}
+.callout{border-left:4px solid var(--accent);background:var(--surface);padding:.9rem 1.1rem;margin:1.2rem 0}
+.callout.warn{border-color:var(--gold)}
+.callout.danger{border-color:var(--red)}
+.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+ul,ol{padding-left:1.3rem}li{margin:.35rem 0}
+.tbl{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:.55rem .7rem;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;letter-spacing:.03em;font-size:.8rem;text-transform:uppercase;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.9rem;margin:1rem 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.9rem 1rem;min-width:0}
+.card h3{margin-top:0;font-size:1rem}
+.card .big{font-family:var(--display);font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.card .sub{font-size:.85rem;color:var(--muted)}
+figure{margin:1.2rem 0}
+figcaption{font-size:.85rem;color:var(--muted);margin-top:.5rem}
+.map{width:100%;max-width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:4px}
+.map text{font-family:var(--body);font-size:11px;fill:var(--fg)}
+.map .zone{fill:var(--bg);stroke:var(--line);stroke-width:1}
+.map .zoneW{fill:var(--blue-soft)}.map .zoneE{fill:var(--blue-soft)}.map .zoneN{fill:var(--red-soft)}.map .zoneS{fill:var(--accent-soft)}
+.map .zl{font-family:var(--display);font-size:12px;font-weight:600;fill:var(--muted);letter-spacing:.06em}
+.map .poi{fill:var(--surface);stroke:var(--fg);stroke-width:1}
+.map .spawn{fill:var(--blue)}
+.map .ex{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+.map .exc{fill:var(--gold);stroke:var(--surface);stroke-width:1.5}
+.map .boss{fill:var(--red)}
+.map .mtn{fill:none;stroke:var(--muted);stroke-dasharray:4 3}
+.map .small{font-size:9.5px;fill:var(--muted)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:1rem 0}
+.steps li{counter-increment:s;position:relative;padding-left:3.2rem;margin:.8rem 0;min-width:0}
+.steps li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:.1rem;font-family:var(--display);font-weight:700;color:var(--accent);font-size:1.1rem;font-variant-numeric:tabular-nums}
+.steps .t{font-family:var(--display);font-weight:600;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.src{font-size:.85rem;color:var(--muted)}
+.src li{margin:.2rem 0}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:.3rem 1rem;font-size:.95rem}
+.kv dt{font-weight:600;color:var(--muted)}
+.kv dd{margin:0;min-width:0}
+@media (max-width:480px){.kv{grid-template-columns:1fr}.kv dt{margin-top:.4rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<main>
+<p class="eyebrow">Delta Force · Operations · Phân tích chiến thuật</p>
+<h1>Zero Dam Budget Playbook</h1>
+<p class="lede">Chạy Zero Dam (Đập Nước Zero) với số vốn vào map thấp nhất nhưng tối đa lợi nhuận: chọn spawn, lộ trình loot, điểm rút, điểm camp, sự kiện. Tổng hợp từ 4 nhóm tra cứu độc lập, cập nhật tới 30/10/2026.</p>
+<div class="meta">
+  <span>Phiên bản: Season 11 "Reorientation" (8/9 → ~9/11/2026)</span>
+  <span>Map: chưa đổi gì từ rework S9 "Echo" (21/4/2026)</span>
+  <span>Server: Global/Garena, đối chiếu thêm nguồn CN</span>
+</div>
+<div class="legend">
+  <span><span class="chip m">XÁC NHẬN</span> ≥2 nguồn hoặc patch note chính thức</span>
+  <span><span class="chip s">1 NGUỒN</span> chỉ một nguồn, thường là guide CN</span>
+  <span><span class="chip u">CHƯA CHẮC</span> nguồn mâu thuẫn hoặc cũ</span>
+</div>
+
+<div class="callout warn">
+<p><strong>Lưu ý trước khi đọc.</strong> Team Jade không công bố bảng loot. Phần lớn toạ độ loot chi tiết lấy từ guide server Trung Quốc (零号大坝) và giá tham khảo ở đó, Global có thể lệch. Patch note S11 không nhắc Zero Dam ngoài việc Easy có thêm câu cá, và ảnh lịch rotation S11 của Team Jade không có Zero Dam, nên hãy kiểm tra màn chọn map xem đang mở độ khó nào. <span class="chip u">CHƯA CHẮC</span></p>
+</div>
+
+<h2>1. Kết luận nhanh</h2>
+<div class="grid">
+  <div class="card"><h3>Vốn vào map</h3><div class="big">0 → 112,5k</div><div class="sub">Easy: chạy dao 0 đồng. Normal: tối thiểu 112.500 Alloy giá trị trang bị.</div></div>
+  <div class="card"><h3>Hoà vốn Normal</h3><div class="big">~143k</div><div class="sub">Loot trung bình mỗi trận cần đạt khi tỉ lệ thoát solo ~44%, kit 112,5k.</div></div>
+  <div class="card"><h3>Benchmark cộng đồng</h3><div class="big">350–500k</div><div class="sub">Mỗi trận 15–20 phút, chạy dao/loot nhanh, thoát &gt;90% (nguồn CN S11). <span class="chip s">1 NGUỒN</span></div></div>
+  <div class="card"><h3>Lợi nhuận thực tế đến từ</h3><div class="big">Hộp An Toàn</div><div class="sub">Đồ đỏ/vàng/thẻ phòng bỏ vào Safe Box ngay khi nhặt: giữ được kể cả khi chết.</div></div>
+</div>
+<ol>
+  <li><strong>Hai pha.</strong> Pha 1 chạy dao Easy đến khi có đệm ~500k Alloy. Pha 2 chuyển sang Normal với kit tối thiểu, vì Easy ra rất ít đồ giá trị cao. <span class="chip m">XÁC NHẬN</span></li>
+  <li><strong>Không đánh nhau.</strong> Không tới Toà hành chính (Admin) trong 5 phút đầu, không kéo cần Thang máy công nghiệp. Loot vòng ngoài, rút sớm.</li>
+  <li><strong>Mỗi trận chỉ 1 cụm chính + 1 cụm phụ</strong> rồi đi ra. Cụm chọn theo bên spawn (mục 6).</li>
+  <li><strong>Ưu tiên vật nhỏ giá trị cao</strong> (thẻ phòng, đồ điện tử đỏ, vàng thỏi, đồng hồ) để vừa Safe Box 2×1 mặc định; bỏ đồ trắng/xanh lá.</li>
+  <li><strong>Sự kiện đang chạy (đến 9/11):</strong> Raven's Deal (đặt 1 món vào điểm của Raven, có thể lên 1 bậc hiếm) và Vlindflower trong tổ chim. Cả hai làm được bằng kit rẻ, nhưng tổ chim nằm ở vùng lau sậy, dễ bị phục.</li>
+</ol>
+
+<h2>2. Bố cục map và điểm spawn</h2>
+<p>Địa hình cao ở hai bên Đông–Tây, thấp dần về Nam. Núi trung tâm chia map làm ba vùng Tây, Đông và Bắc (Khu hành chính); vùng Nam là sông, bãi lau và đảo được rework ở S9. <span class="chip m">XÁC NHẬN</span></p>
+
+<figure>
+<svg class="map" viewBox="0 0 760 470" role="img" aria-label="Sơ đồ khái niệm Zero Dam: vùng Tây, Bắc, Đông, Nam, các điểm spawn và điểm rút">
+  <rect class="zone zoneW" x="20" y="90" width="230" height="250" rx="6"/>
+  <rect class="zone zoneN" x="265" y="20" width="230" height="200" rx="6"/>
+  <rect class="zone zoneE" x="510" y="90" width="230" height="250" rx="6"/>
+  <rect class="zone zoneS" x="20" y="355" width="720" height="95" rx="6"/>
+  <text class="zl" x="30" y="108">TÂY</text>
+  <text class="zl" x="275" y="38">BẮC · KHU HÀNH CHÍNH</text>
+  <text class="zl" x="520" y="108">ĐÔNG</text>
+  <text class="zl" x="30" y="373">NAM · SÔNG &amp; BÃI LAU (S9)</text>
+  <path class="mtn" d="M255 230 C300 250 340 300 380 345 C420 300 460 250 505 230"/>
+  <text class="small" x="350" y="300" text-anchor="middle">núi trung tâm</text>
+
+  <rect class="poi" x="40" y="125" width="90" height="34" rx="3"/><text x="85" y="146" text-anchor="middle">Doanh trại</text>
+  <rect class="poi" x="60" y="200" width="110" height="34" rx="3"/><text x="115" y="221" text-anchor="middle">Nhà máy xi măng</text>
+  <rect class="poi" x="80" y="275" width="130" height="34" rx="3"/><text x="145" y="296" text-anchor="middle">Công trường ống nước</text>
+  <text class="small" x="145" y="325" text-anchor="middle">(đường ống ngầm, ngập nước)</text>
+
+  <rect class="poi" x="285" y="52" width="190" height="24" rx="3"/><text x="380" y="68" text-anchor="middle">Đỉnh đập · Lòng đập (kho vàng)</text>
+  <rect class="poi" x="285" y="110" width="88" height="34" rx="3"/><text x="329" y="131" text-anchor="middle">Toà Tây</text>
+  <rect class="poi" x="387" y="110" width="88" height="34" rx="3"/><text x="431" y="131" text-anchor="middle">Toà Đông</text>
+  <line x1="373" y1="127" x2="387" y2="127" stroke="var(--fg)" stroke-width="2"/>
+  <rect class="poi" x="285" y="165" width="90" height="28" rx="3"/><text x="330" y="183" text-anchor="middle">Bãi container</text>
+  <rect class="poi" x="387" y="165" width="88" height="28" rx="3"/><text x="431" y="183" text-anchor="middle">Bãi đỗ xe</text>
+  <circle class="boss" cx="380" cy="150" r="6"/><text class="small" x="380" y="208" text-anchor="middle">● Saeed + Fiery Owl Guard</text>
+
+  <rect class="poi" x="530" y="125" width="110" height="34" rx="3"/><text x="585" y="146" text-anchor="middle">Trạm biến áp chính</text>
+  <rect class="poi" x="560" y="200" width="110" height="34" rx="3"/><text x="615" y="221" text-anchor="middle">Trạm biến áp phụ</text>
+  <rect class="poi" x="600" y="275" width="110" height="34" rx="3"/><text x="655" y="296" text-anchor="middle">Trung tâm du khách</text>
+
+  <circle class="spawn" cx="45" cy="165" r="4"/><circle class="spawn" cx="60" cy="170" r="4"/>
+  <circle class="spawn" cx="50" cy="240" r="4"/><circle class="spawn" cx="65" cy="248" r="4"/><circle class="spawn" cx="80" cy="245" r="4"/>
+  <circle class="spawn" cx="95" cy="315" r="4"/><circle class="spawn" cx="110" cy="320" r="4"/>
+  <circle class="spawn" cx="690" cy="165" r="4"/><circle class="spawn" cx="705" cy="170" r="4"/><circle class="spawn" cx="720" cy="160" r="4"/>
+  <circle class="spawn" cx="690" cy="320" r="4"/><circle class="spawn" cx="705" cy="325" r="4"/><circle class="spawn" cx="720" cy="315" r="4"/>
+  <circle class="spawn" cx="262" cy="135" r="4"/><circle class="spawn" cx="498" cy="135" r="4"/>
+  <text class="small" x="262" y="152" text-anchor="middle">#1 Tây</text><text class="small" x="498" y="152" text-anchor="middle">#1 Đông</text>
+
+  <circle class="ex" cx="24" cy="215" r="7"/><text x="34" y="245" class="small">A</text>
+  <circle class="ex" cx="736" cy="215" r="7"/><text x="722" y="245" class="small">B</text>
+  <circle class="ex" cx="655" cy="340" r="7"/><text x="668" y="344" class="small">C</text>
+  <circle class="ex" cx="115" cy="340" r="7"/><text x="128" y="344" class="small">D</text>
+  <circle class="exc" cx="85" cy="100" r="7"/><text x="98" y="104" class="small">E</text>
+  <circle class="exc" cx="380" cy="30" r="7"/><text x="393" y="34" class="small">F</text>
+  <circle class="exc" cx="380" cy="430" r="7"/><text x="393" y="434" class="small">G</text>
+  <circle class="exc" cx="500" cy="45" r="7"/><text x="513" y="49" class="small">H</text>
+
+  <rect class="poi" x="300" y="395" width="160" height="22" rx="3"/><text x="380" y="410" text-anchor="middle">Thuyền · tổ chim · hang ngầm</text>
+
+  <circle class="spawn" cx="40" cy="458" r="4"/><text class="small" x="50" y="462">spawn (14 điểm, 7 Tây / 7 Đông)</text>
+  <circle class="ex" cx="230" cy="458" r="6"/><text class="small" x="242" y="462">rút cố định / ngẫu nhiên</text>
+  <circle class="exc" cx="400" cy="458" r="6"/><text class="small" x="412" y="462">rút có điều kiện / trả phí</text>
+  <circle class="boss" cx="570" cy="458" r="5"/><text class="small" x="580" y="462">boss</text>
+</svg>
+<figcaption>Sơ đồ khái niệm, không theo tỉ lệ. Vị trí ô POI dựa trên mô tả của guide, không phải toạ độ thật. Ký hiệu A–H ứng với bảng điểm rút ở mục 3.</figcaption>
+</figure>
+
+<h3>Spawn: 14 điểm, chia đôi Đông–Tây</h3>
+<ul>
+  <li>14 điểm spawn, 7 bên Tây và 7 bên Đông, ngăn bởi Toà hành chính. Mỗi trận 5–6 đội (15–18 người), thường 3 đội mỗi bên. <span class="chip m">XÁC NHẬN</span></li>
+  <li>Hai spawn <strong>"Toà Tây #1" và "Toà Đông #1"</strong> luôn có đúng 1 đội và chỉ cách Admin ~30 giây. Nếu bạn rơi vào đây thì bạn là người gần vùng nguy hiểm nhất map. <span class="chip m">XÁC NHẬN</span></li>
+  <li>Phân bố còn lại (nguồn CN 2024, mô tả 13/14 điểm): Trạm biến áp 3, Trung tâm du khách 3, Nhà máy xi măng 3, Khu ống nước 2 (1 trong ống, 1 dưới hầm), Doanh trại 2. <span class="chip s">1 NGUỒN</span></li>
+  <li>Spawn trong khu ống nước bị khuất, có thể đặt hai đội sát nhau. Không có spawn trong Khu hành chính. <span class="chip s">1 NGUỒN</span></li>
+  <li><strong>Spawn bên nào thì điểm rút cố định nằm bên đối diện:</strong> spawn Tây → rút Đông và ngược lại. Đây là quy tắc quan trọng nhất để lên kế hoạch. <span class="chip m">XÁC NHẬN</span></li>
+  <li>Không nguồn nào ghi nhận khác biệt spawn giữa Easy và Normal.</li>
+</ul>
+<div class="callout">
+<p><strong>Cách nhận diện spawn "an toàn" với kit rẻ:</strong> Doanh trại, Trung tâm du khách và các spawn mép ngoài. Từ đây bạn có thể loot vòng ngoài trong khi hai đội #1 đánh nhau ở Admin, và nếu muốn thì tới "third-party" sau phút 6–8.</p>
+</div>
+
+<h2>3. Điểm rút lui</h2>
+<p>8 điểm rút ở Easy và Normal. Tên tiếng Anh theo Bluestacks, tên và loại đối chiếu công cụ map chính thức qua deltagamehub (8/2026); hai danh sách khớp 1-1. <span class="chip m">XÁC NHẬN</span></p>
+<div class="tbl"><table>
+<thead><tr><th>#</th><th>Điểm rút</th><th>Loại</th><th>Vị trí &amp; điều kiện</th><th>Dành cho spawn</th><th>Rủi ro camp</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>West Rear Grip Road Entrance (Cửa đường phía Tây)</td><td>Cố định, luôn mở</td><td>Mép Tây. Chờ 10 giây.</td><td>Đông</td><td>Cao ở 2–3 phút cuối; tầm nhìn mở</td></tr>
+<tr><td>B</td><td>East Rear Grip Tunnel (Hầm phía Đông)</td><td>Cố định, luôn mở</td><td>Mép Đông. Chờ 10 giây.</td><td>Tây</td><td>Cao ở 2–3 phút cuối</td></tr>
+<tr><td>C</td><td>East Rear Grip Road Entrance</td><td>Ngẫu nhiên (~50%)</td><td>Nam Trung tâm du khách.</td><td>Tây</td><td>Thấp hơn A/B</td></tr>
+<tr><td>D</td><td>Shortcut near the road (Lối tắt cạnh đường)</td><td>Ngẫu nhiên (~50%)</td><td>Nam Nhà máy xi măng.</td><td>Đông</td><td>Thấp; guide CN gợi ý là lối ít bị chặn nhất</td></tr>
+<tr><td>E</td><td>Repair Pathway (Đường bảo trì)</td><td>Có điều kiện: <strong>bỏ ba lô</strong></td><td>Hầm/ống bắc Doanh trại (1 nguồn nói phía Đông, mâu thuẫn). <span class="chip u">CHƯA CHẮC</span></td><td>Đông (suy luận)</td><td>Thấp; lối thoát khẩn khi bị kẹp</td></tr>
+<tr><td>F</td><td>Dam Summit (Đỉnh đập)</td><td>Có điều kiện: <strong>giới hạn cân nặng</strong></td><td>Đỉnh đập/cao điểm Đông Bắc. Dưới 50 kg ở Easy, dưới 30 kg ở Normal. <span class="chip s">1 NGUỒN</span></td><td>Tây (suy luận)</td><td>Thấp–trung bình</td></tr>
+<tr><td>G</td><td>River Bank (Bờ sông)</td><td><strong>Trả phí</strong></td><td>Nam trung tâm, mép vùng nước S9. 10.000 Alloy ở Easy, 40.000 ở Normal; chờ 30 giây; tối đa 4 đội. Phí trừ vào thưởng. <span class="chip m">XÁC NHẬN</span></td><td>Cả hai</td><td>Thấp, nhưng đi qua bãi lau có chim báo động</td></tr>
+<tr><td>H</td><td>Industrial Elevator (Thang máy công nghiệp)</td><td>Kéo cần</td><td>Bắc Admin. Cần ở Toà Tây tầng 2 hoặc phòng góc trên-phải Trạm biến áp chính. Chờ ~3 phút. Easy kích hoạt 2 lần, Normal 1 lần. <span class="chip s">1 NGUỒN</span></td><td>Cả hai</td><td><strong>Rất cao</strong>: kéo cần báo động toàn map</td></tr>
+</tbody></table></div>
+<ul>
+  <li>Quy tắc 1 nguồn (youxiabc 5/2026): mỗi trận chỉ xuất hiện 1 điểm rút ngẫu nhiên và 1 điểm rút có điều kiện; điểm ngẫu nhiên chỉ có ở Easy. <span class="chip u">CHƯA CHẮC</span></li>
+  <li>S9 rework thang máy: thêm lối vào thứ hai, bớt vật che cho người giữ, mở góc peek cho người tấn công. Người cầm kit rẻ càng không nên dùng. <span class="chip m">XÁC NHẬN</span></li>
+  <li>Từ 9/2026 có thể đánh dấu điểm rút và công tắc cả trong vùng nhiễu tín hiệu. <span class="chip m">XÁC NHẬN</span></li>
+</ul>
+<div class="callout danger">
+<p><strong>Thứ tự ưu tiên rút với kit rẻ:</strong> D hoặc C (ngẫu nhiên, nếu mở) → G (trả phí, chỉ khi túi &gt; 100k ở Easy hoặc &gt; 300k ở Normal) → F nếu đủ nhẹ → A/B cố định, tới sớm 2–3 phút, ném khói trước khi vào → E chỉ khi bị kẹp và đồ ngon đã nằm trong Safe Box. Không bao giờ H.</p>
+</div>
+
+<h2>4. Vị trí đồ vàng, đồ đỏ và phòng thẻ</h2>
+<h3>Theo khu vực</h3>
+<div class="tbl"><table>
+<thead><tr><th>Khu</th><th>Điểm cụ thể</th><th>Đồ thường gặp</th><th>Rủi ro</th><th>Tin cậy</th></tr></thead>
+<tbody>
+<tr><td>Trung tâm du khách</td><td>Tầng 2 phòng nhỏ bên phải (bàn và sàn, điểm đỏ hay được nhắc nhất); quầy bar tầng 1; bàn máy tính văn phòng tầng 1; bàn trà phòng sofa tầng 2 (thẻ phòng); WC tầng 1 (Rolex, vàng thỏi)</td><td>Điện tử đỏ, laptop quân sự, radio</td><td>Thấp</td><td><span class="chip m">XÁC NHẬN</span> (WC: 1 nguồn)</td></tr>
+<tr><td>Nhà máy xi măng</td><td>Sàn dưới bồn tròn; phòng nhỏ dưới hòm súng; phòng máy tính bảo mật tầng 2 góc Đông Nam; hòm súng đen trên lối đi vách đá; vàng thỏi ở máy cổng vào và phòng giữa</td><td>Đồ đỏ nhóm năng lượng, đạn pháo, vàng thỏi</td><td>Thấp–trung bình (có Rocketeer)</td><td><span class="chip m">XÁC NHẬN</span> (hòm đen: 1 nguồn)</td></tr>
+<tr><td>Trạm biến áp phụ (Small Substation)</td><td>Bàn phòng ký túc (thẻ Substation Dormitory); sàn giữa 2 máy phát; nóc thùng gỗ</td><td>Máy thở y tế, lò phản ứng mini, pin nhiên liệu</td><td>Trung bình</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Trạm biến áp chính</td><td>Bàn tầng 1 và sàn giữa dãy server; phòng flight-case tầng 2; Tech Room tầng 2 (thẻ); chốt bảo vệ cổng vào; két trong toà chính</td><td>Pin nhiên liệu, server tối mật, terminal quân sự</td><td>Cao (nam châm PvP, có công tắc thang máy)</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Doanh trại</td><td>Kệ và bàn máy tính tầng 1; bàn tầng 2</td><td>Hồ sơ tình báo, điện tử</td><td>Thấp</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Toà Đông (Admin)</td><td>Văn phòng tầng 2; bàn phòng tối (thẻ); Manager's Office (thẻ, 2 két lớn, 2 cặp, hòm súng); quầy lễ tân tầng 1; két tầng 2</td><td>Server tối mật, hồ sơ</td><td>Rất cao</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Toà Tây (Admin)</td><td>WC tầng 2 (Rolex); bàn văn phòng; quầy nước (champagne); bàn cạnh phòng cầu dao; Control Room và Monitoring Room (thẻ)</td><td>Terminal thông tin, radar cầm tay</td><td>Rất cao</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Lòng đập / kho vàng</td><td>Sàn, bàn, bệ đá; mở qua nhiệm vụ Gold (Raven) hoặc Wall Breaker</td><td>Vàng thỏi, giáp cao cấp, Special Class cache (thẻ đen boss, collectible)</td><td>Rất cao (boss, gas, hẹn giờ)</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Trạm bảo trì đỉnh đập, bãi đỗ xe</td><td>Phòng có bàn medkit; thùng trong chòi không cửa phía Đông bãi đỗ</td><td>Y tế đỏ, nhiên liệu</td><td>Trung bình</td><td><span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Vùng nước S9</td><td>Thuyền (nhiên liệu, điện tử), tủ dụng cụ, 2 túi du lịch, tổ chim; hang ngầm giá trị thấp</td><td>Vlindflower (sự kiện), vật liệu</td><td>Thấp nhưng chim báo động</td><td><span class="chip s">1 NGUỒN</span></td></tr>
+</tbody></table></div>
+<p>Tổng số container theo deltaforcedb (2026): 15 két, 3 két nhỏ, 3 Premium Storage, 18 máy tính, 18 thùng máy tính, 9 server, 8 cặp tài liệu, 6 flight case, 11 hòm súng lớn, 22 tổ chim, 12 cửa thẻ, 6 thùng bí mật.</p>
+
+<h3>Phòng thẻ: giá so với kỳ vọng</h3>
+<p>Giá CN là giá thấp nhất tháng 3/2026 (18183); giá Global là tháng 7–8/2025 (lootbar). Không tìm thấy giá Global 2026, hãy xem Nhà Đấu Giá trước khi mua. Thẻ bán được trước khi dùng, dùng rồi thì không đấu giá được.</p>
+<div class="tbl"><table>
+<thead><tr><th>Phòng</th><th>Bên trong</th><th class="num">Giá CN 3/2026</th><th class="num">Giá Global 2025</th><th>Đánh giá cho vốn ít</th></tr></thead>
+<tbody>
+<tr><td>Substation Dormitory</td><td>Đồ đỏ trên bàn, tủ</td><td class="num">37.800</td><td class="num">33.600</td><td><strong>Mua đầu tiên.</strong> ROI tốt nhất, khu ít tranh chấp. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>West Wing Infirmary</td><td>Y tế đỏ trên bàn và giường, medkit</td><td class="num">117.600</td><td class="num">120.000</td><td>Tốt nhưng nằm trong Admin. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Equipment Collection Room (Toà Đông 1F)</td><td>Bàn, kệ</td><td class="num">280.250</td><td class="num">350.000</td><td>Tốt; nhìn được đồ trước khi mở. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Cement Plant Office</td><td>Xe đẩy</td><td class="num">368.129</td><td class="num">—</td><td>Mâu thuẫn giữa nguồn. <span class="chip u">CHƯA CHẮC</span></td></tr>
+<tr><td>Central VIP Room (Du khách 2F)</td><td>Vali, cặp</td><td class="num">—</td><td class="num">390.000</td><td>Bỏ qua. <span class="chip u">CHƯA CHẮC</span></td></tr>
+<tr><td>Ticket Office (Du khách 1F)</td><td>Két nhỏ, vali</td><td class="num">~600.000</td><td class="num">550.000</td><td>Tuỳ chọn.</td></tr>
+<tr><td>West Wing Monitoring Room</td><td>3 thùng máy tính</td><td class="num">—</td><td class="num">645.000</td><td>Giá trị cao nhưng ở Admin.</td></tr>
+<tr><td>West Wing Control Room</td><td>2 server, máy tính, radio quân sự, hộp đen</td><td class="num">677.366</td><td class="num">1M+</td><td>Nhìn qua cửa sổ trước khi mở. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>Substation Tech Room</td><td>2 server, 1 két lớn, 2 áo lab</td><td class="num">3.889.992</td><td class="num">3–4M</td><td>Chỉ dùng nếu nhìn thấy đồ qua cửa sổ. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td>East Wing Manager's Office</td><td>2 két lớn, 2 cặp, hòm súng, máy tính</td><td class="num">~4.150.000</td><td class="num">2,8–3,2M</td><td>Canh bạc; cần 1 món đỏ vài triệu mới hoà vốn. <span class="chip u">CHƯA CHẮC</span></td></tr>
+</tbody></table></div>
+<ul>
+  <li><strong>Thẻ đen Saeed</strong> (Saeed Black Card) rớt ngẫu nhiên trong mọi container Zero Dam, mở 1 phòng trong trận đó. Guide gợi ý dùng cho Manager's Office.</li>
+  <li>Số lần dùng thẻ theo độ khó: Easy 1, Normal 2, Hard 4. <span class="chip s">1 NGUỒN</span></li>
+  <li>Khi thiếu tiền chỉ nên mua thẻ dưới ~500k. Nhặt được thẻ trong trận là thắng lớn: bỏ Safe Box ngay.</li>
+</ul>
+
+<h2>5. Sự kiện trong trận và cách tận dụng</h2>
+<div class="tbl"><table>
+<thead><tr><th>Sự kiện</th><th>Trạng thái</th><th>Ở đâu / khi nào</th><th>Phần thưởng</th><th>Chiến thuật với kit rẻ</th></tr></thead>
+<tbody>
+<tr><td><strong>Raven's Deal: First Call</strong> (Halloween)</td><td>Đang chạy 23/10–9/11 <span class="chip m">XÁC NHẬN</span></td><td>Tìm điểm của Raven trong trận, đặt 1 món. 20 vị trí trên 5 map, có cơ chế đèn đường và nến. Toạ độ Zero Dam chưa có trong văn bản. <span class="chip s">1 NGUỒN</span></td><td>Raven nâng món đó tối đa 1 bậc hiếm, hoặc giữ luôn. Không công bố tỉ lệ.</td><td>Chơi Easy, mang 1 món tím rẻ, đặt rồi đi. Người chơi khác đang chạy mission "thoát với đồ trên ngưỡng giá trị" nên họ loot đầy và cố thoát: camp điểm rút của họ đông hơn bình thường.</td></tr>
+<tr><td><strong>Find Vlindflower</strong></td><td>30/10–9/11 <span class="chip m">XÁC NHẬN</span></td><td>Tổ chim mọi map; Zero Dam có ~20–22 tổ, chủ yếu vùng lau sậy và bờ sông phía Nam.</td><td>Collectible Vlindflower, đổi Tactical Armament Voucher khi thoát.</td><td>Hợp với chạy dao: tổ chim ở vòng ngoài, gần River Bank. Nhưng di chuyển/bắn trong lau sậy làm chim bay báo vị trí, nên vào tổ từ mép nước, không chạy xuyên bãi lau.</td></tr>
+<tr><td><strong>Nhiệm vụ Gold</strong> (kho vàng, Raven)</td><td>Thêm ở S9, chưa rõ còn mở ở S11 <span class="chip u">CHƯA CHẮC</span></td><td>Kho vàng trong lòng đập; đồ nhìn thấy trước, hết giờ phòng ngập khí. Không làm chung với Wall Breaker.</td><td>Nhiều đồ vàng hơn thời gian cho phép lấy.</td><td>Bỏ qua khi vốn ít: boss, guard, gas, và mọi đội đều biết.</td></tr>
+<tr><td><strong>Saeed</strong> (boss)</td><td>Cố định</td><td>Khu hành chính, thường sảnh tầng 1 hoặc cầu thang Toà Đông; guard tuần tra lòng đập từ 11/2025; tiếng gọi lan 50 m.</td><td>Giáp tím, đạn tím, M249, cache Special Class (Normal).</td><td>Né. Tiếng súng đánh boss là mồi kéo đội thứ ba. Nếu nghe M249 ở Admin thì đó là lúc loot vòng ngoài yên nhất.</td></tr>
+<tr><td><strong>Cần thang máy</strong></td><td>Cố định</td><td>Kéo cần ở Toà Tây 2F hoặc Trạm biến áp chính, báo động toàn map, chờ ~3 phút.</td><td>Điểm rút</td><td>Không kéo. Ngược lại: khi thấy báo động, biết chắc có đội đang ở Bắc Admin, tránh vùng đó và rút phía Nam.</td></tr>
+<tr><td>Airdrops Incoming</td><td>Đã kết thúc 30/9</td><td>—</td><td>—</td><td>Không còn áp dụng.</td></tr>
+</tbody></table></div>
+<p>Không tìm thấy bằng chứng cho các tên "tín hiệu bí ẩn", "đoàn xe bọc thép", "trực thăng", "vệ tinh" trên Zero Dam. Đừng dựa vào guide nào nhắc các tên này.</p>
+
+<h2>6. Vị trí camp, phục kích và cách tránh</h2>
+<h3>Nơi người ta camp</h3>
+<ul>
+  <li><strong>Giữa Toà hành chính</strong>, đường chính giữa Toà Đông và Toà Tây, cầu thang Toà Tây. <span class="chip s">1 NGUỒN</span></li>
+  <li><strong>Lối cạnh bãi container ra cầu</strong>: chokepoint; đường cầu thay thế an toàn hơn. <span class="chip s">1 NGUỒN</span></li>
+  <li><strong>Trạm biến áp chính</strong>: nam châm PvP vì có két, công tắc thang máy và nằm giữa đường rotation. <span class="chip m">XÁC NHẬN</span></li>
+  <li><strong>Đá và container quanh Nhà máy xi măng</strong>. <span class="chip s">1 NGUỒN</span></li>
+  <li><strong>Mái nhà và cao điểm gần Trung tâm du khách</strong> để bắt đội đang rotate. <span class="chip s">1 NGUỒN</span></li>
+  <li><strong>Điểm rút cố định A/B</strong> trong 2–3 phút cuối; điểm rút đường cái có tầm nhìn mở, rủi ro cao nhất. <span class="chip m">XÁC NHẬN</span></li>
+  <li><strong>Thang máy</strong>: sau S9 vẫn là nơi đông nhất mỗi khi có báo động. <span class="chip m">XÁC NHẬN</span></li>
+  <li>Thuyền bỏ hoang, lối ngầm, góc cửa kho vàng. <span class="chip u">CHƯA CHẮC</span></li>
+</ul>
+<h3>Nếu bạn là người camp (ít vốn, muốn ăn đồ người khác)</h3>
+<ul>
+  <li>Phục ở <strong>đường ra điểm rút ngẫu nhiên D/C</strong> và <strong>bờ sông G</strong> từ phút 15 trở đi: người đến đây thường túi nặng, kit rẻ, không muốn đánh. Cần ít nhất đạn Lv3 nếu mục tiêu mặc giáp xanh.</li>
+  <li>Dùng chim trong bãi lau làm cảnh báo sớm thay vì tự đứng trong lau.</li>
+  <li>Không camp thang máy với kit rẻ: đó là nơi đội full kit tới.</li>
+</ul>
+<h3>Cách không bị camp</h3>
+<ul>
+  <li>Ngừng loot khi còn ~3 phút, tới điểm rút sớm 2–3 phút, ném khói/flash trước khi vào vùng rút cố định.</li>
+  <li>Luôn có điểm rút dự phòng phía xa (G trả phí hoặc F đỉnh đập nếu nhẹ).</li>
+  <li>Bị kẹp: trượt qua chokepoint, dùng thuốc thể lực, không bắn trả; đồ ngon đã trong Safe Box thì bỏ ba lô chạy ra E.</li>
+  <li>Đi vòng ngoài phía Nam, tránh trung tâm Admin trong toàn trận.</li>
+</ul>
+
+<h2>7. Chiến thuật tối ưu lợi nhuận với vốn ít</h2>
+<h3>Ba cấu hình vào map</h3>
+<div class="tbl"><table>
+<thead><tr><th>Cấu hình</th><th>Chi phí</th><th>Gồm</th><th>Khi nào dùng</th></tr></thead>
+<tbody>
+<tr><td><strong>K0 · Chạy dao Easy</strong></td><td class="num">0</td><td>Dao mặc định, không giáp, 1 garo + 1 khói. Nhặt súng từ AI.</td><td>Khi dưới ~500k Alloy, hoặc để làm Raven's Deal / Vlindflower. Mọi lần thoát đều là lãi. <span class="chip m">XÁC NHẬN</span></td></tr>
+<tr><td><strong>K1 · Vé trang bị</strong></td><td class="num">0 (vé)</td><td>Vé Tiêu Chuẩn: đồ xanh, đạn xuyên 2–3, kit tới ~200k; S11 đổi SG552 thành Thompson. Vé Tinh Nhuệ: đồ tím, đạn 3–4. Làm mới hằng ngày.</td><td>Dùng hết vé mỗi ngày trước khi bỏ tiền túi. Đủ điều kiện vào Normal nếu giá trị kit ≥112,5k.</td></tr>
+<tr><td><strong>K2 · Normal tối thiểu</strong></td><td class="num">~112.500</td><td>Mũ Lv1 cũ, giáp nhẹ Lv1, chest rig DRC, ba lô 15 ô, G18 + băng 33 viên, 2 garo, 2 stim, 2 khói (kit CN S10). Global: SG552 red-dot ~105k hoặc QJB201 ~60k + giáp T2 ~200k tổng. <span class="chip s">1 NGUỒN</span></td><td>Khi có đệm ≥500k. Normal ra đồ đỏ/vàng nhiều hơn hẳn Easy.</td></tr>
+</tbody></table></div>
+<dl class="kv">
+  <dt>Giới hạn Easy</dt><dd>Không được mang giáp Lv5+ hoặc đạn Lv4+ (nguồn 2025, chưa xác nhận lại ở S11). Đạn Lv3 là trần hợp lý. <span class="chip u">CHƯA CHẮC</span></dd>
+  <dt>Đạn</dt><dd>Với AI chỉ cần Lv1–2. Với người mặc giáp xanh cần Lv3–4. Đừng mua đạn tím cho kit rẻ.</dd>
+  <dt>Operator</dt><dd><strong>D-Wolf</strong> (sprint ngoại cốt, trượt, 2 khói) để thoát hiểm, hoặc <strong>Hackclaw</strong> (scan 90 s từ S11, đi khom rất êm) / <strong>Luna</strong> để né người. Toxik/Vlinder là pick squad, không phải solo loot.</dd>
+  <dt>EDC Tool Kit (S11)</dt><dd>Đồ trong EDC không tính vào giá trị vào map và không mất khi thoát thất bại. Nhét garo/stim vào đây.</dd>
+  <dt>Safe Box</dt><dd>2×1 mặc định; 2×2 qua thẻ 7 ngày (Tekniq Alloy Store S11, đến 9/11); 2×3 Season Pass; 3×3 nhiệm vụ mùa (chỉ cần 1 lần nộp Collectors ở S11). Nâng lên 2×2 là khoản đầu tư rẻ nhất tăng lợi nhuận.</dd>
+  <dt>Bán đồ</dt><dd>Đồ cồng kềnh bán Trạm Tiếp Tế; đồ đỏ/tím và thẻ lên Nhà Đấu Giá (niêm yết 24h); bán cả khẩu súng thì phụ kiện rẻ tự chảy về Supply Station (S11). Không bán vật liệu nâng Black Site.</dd>
+</dl>
+
+<h3>Bài toán kỳ vọng</h3>
+<p>EV mỗi trận = p(thoát) × loot − (1 − p) × kit − phí (rút trả phí, thẻ). Số liệu dưới đây dùng tỉ lệ thoát solo Normal ~44% (log của 1 tác giả, mẫu nhỏ) và kit 112,5k. <span class="chip s">1 NGUỒN</span></p>
+<div class="tbl"><table>
+<thead><tr><th>Kịch bản</th><th class="num">Kit</th><th class="num">p thoát</th><th class="num">Loot/lần thoát</th><th class="num">EV/trận</th><th>Ghi chú</th></tr></thead>
+<tbody>
+<tr><td>K0 Easy chạy dao</td><td class="num">0</td><td class="num">~95%</td><td class="num">100–400k</td><td class="num">≈ +95–380k</td><td>Không có số âm; tốc độ 15–20 phút/trận</td></tr>
+<tr><td>K2 Normal, chơi an toàn vòng ngoài</td><td class="num">112,5k</td><td class="num">~60%</td><td class="num">400k</td><td class="num">≈ +195k</td><td>Chưa tính đồ đã cất Safe Box khi chết</td></tr>
+<tr><td>K2 Normal, hoà vốn</td><td class="num">112,5k</td><td class="num">44%</td><td class="num">143k</td><td class="num">0</td><td>+40k loot nếu dùng rút trả phí</td></tr>
+<tr><td>Log CN 16 trận / 2,1 giờ</td><td class="num">—</td><td class="num">88%</td><td class="num">~560k</td><td class="num">~4,3M/giờ</td><td>Người chơi quen map, kit rẻ <span class="chip s">1 NGUỒN</span></td></tr>
+</tbody></table></div>
+<p>Hai hệ quả: thứ nhất, nâng p(thoát) có giá trị hơn nâng loot, nên rút sớm hơn luôn đúng với kit rẻ. Thứ hai, mọi món bỏ vào Safe Box được giữ dù p thất bại, nên thứ tự ưu tiên là cất đồ trước, chất ba lô sau.</p>
+
+<h3>Lộ trình mẫu theo bên spawn (Normal, kit K2)</h3>
+<p><strong>Spawn Tây</strong> (Doanh trại, Nhà máy xi măng, Khu ống nước). Rút cố định của bạn ở Đông, rất xa, nên kế hoạch xoay quanh D/G/F.</p>
+<ol class="steps">
+  <li><span class="t">0–2 phút</span><br>Loot Doanh trại (kệ, bàn máy tính 1F, bàn 2F) hoặc Nhà máy xi măng (bồn tròn, phòng dưới hòm súng, phòng máy tính 2F Đông Nam, vàng thỏi ở máy cổng). Không đi về phía Admin.</li>
+  <li><span class="t">2–7 phút</span><br>Cụm còn lại trong hai cụm trên. Nếu có thẻ Cement Plant Office thì ghé, nhìn trước. Cất ngay đồ đỏ/thẻ vào Safe Box.</li>
+  <li><span class="t">7–12 phút</span><br>Xuống Công trường ống nước, qua vùng nước S9: thuyền, tủ dụng cụ, túi du lịch, tổ chim (Vlindflower). Đi mép nước, không băng bãi lau.</li>
+  <li><span class="t">12–15 phút</span><br>Rút: D (nam Xi măng) nếu mở; không thì G bờ sông (40k Normal) khi túi &gt; 300k; nếu nhẹ hơn 30 kg thì F. B hầm Đông chỉ khi còn ≥5 phút để đi vòng Nam.</li>
+</ol>
+<p><strong>Spawn Đông</strong> (Trạm biến áp, Trung tâm du khách). Rút cố định ở Tây, nhưng C (nam Du khách) và G rất gần bạn.</p>
+<ol class="steps">
+  <li><span class="t">0–3 phút</span><br>Trung tâm du khách: phòng nhỏ 2F bên phải, bar 1F, bàn máy tính 1F, bàn trà 2F (thẻ), WC 1F. Khu này ít người và nằm xa lõi.</li>
+  <li><span class="t">3–8 phút</span><br>Trạm biến áp phụ: phòng ký túc (thẻ Dormitory ~34–38k, mua trước khi vào), sàn giữa 2 máy phát, nóc thùng gỗ. Cất đồ đỏ.</li>
+  <li><span class="t">8–11 phút</span><br>Chỉ khi im tiếng súng: chốt bảo vệ cổng và tầng 1 Trạm biến áp chính. Nghe thấy báo động thang máy hoặc M249 thì bỏ bước này.</li>
+  <li><span class="t">11–14 phút</span><br>Rút C nếu mở, không thì G. A cửa Tây chỉ khi bạn có ≥6 phút và sẵn khói.</li>
+</ol>
+<div class="callout">
+<p><strong>Quy tắc "đã đủ".</strong> Khi Safe Box đầy và ba lô đã có ≥300k ở Normal (≥100k ở Easy), đi ra ngay. Thêm một cụm nữa chỉ tăng loot tuyến tính nhưng tăng xác suất gặp đội full kit đang quét vòng ngoài sau khi đánh xong Admin ở phút 8–12.</p>
+</div>
+
+<h2>8. Những gì chưa xác nhận được</h2>
+<ul>
+  <li>Zero Dam có còn trong rotation S11 và mở độ khó nào (Easy/Normal/Night/Hard). Không tìm thấy Hard cho Zero Dam.</li>
+  <li>Toạ độ Raven's Deal trên Zero Dam; nhiệm vụ Gold và Fiery Owl Hunt còn mở ở S11 không.</li>
+  <li>Giá thẻ Global 2026, thuế Nhà Đấu Giá (ước ~5%), thời lượng trận.</li>
+  <li>Trần giáp/đạn ở Easy và mức 112,5k ở Normal lấy từ nguồn 2025 đến giữa 2026, chưa được patch note S11 nhắc lại.</li>
+  <li>Reddit và Fandom wiki bị chặn khi tra cứu, nên không có dữ liệu từ hai nơi này.</li>
+</ul>
+
+<h2>9. Nguồn chính</h2>
+<ul class="src">
+  <li>Patch note S11 (4/9/2026): <a href="https://deltaforce.garena.com/en/news/all/PA6CZD">deltaforce.garena.com/en/news/all/PA6CZD</a></li>
+  <li>Patch note S9 Echo, rework Zero Dam (20/4/2026): <a href="https://deltaforce.garena.com/en/news/all/YVRATP">deltaforce.garena.com/en/news/all/YVRATP</a> · PCGamesN 22/4/2026: <a href="https://www.pcgamesn.com/delta-force/season-echo-zero-dam-rework">pcgamesn.com</a></li>
+  <li>Patch note S10 Meltdown (26/6/2026): <a href="https://deltaforce.garena.com/en/news/all/2MX7J4">deltaforce.garena.com/en/news/all/2MX7J4</a></li>
+  <li>Halloween Raven's Deal (22/10) và Vlindflower (29/10): <a href="https://patchbot.io/games/delta-force">patchbot.io/games/delta-force</a>; <a href="https://games.gg/delta-force/guides/halloween-event-ravens-deal-trickster-store/">games.gg</a></li>
+  <li>Hướng dẫn rút quân Đập Nước Zero, Garena VN (22/10/2025): <a href="https://deltaforce.garena.vn/news/chien-dich/huong-dan-rut-quan-dap-nuoc-zero">deltaforce.garena.vn</a></li>
+  <li>14 spawn (mmoexp 8–9/2026): <a href="https://www.mmoexp.com/News/delta-force-season-11-zero-dam-guide-master-the-14-spawn-points.html">mmoexp.com</a></li>
+  <li>Điểm rút, đối chiếu map chính thức (8/2026): <a href="https://deltagamehub.com/maps/extractions">deltagamehub.com</a> · Bluestacks: <a href="https://www.bluestacks.com/blog/game-guides/delta-force-hawk-ops/dfho-maps-guide-en.html">bluestacks.com</a></li>
+  <li>Loot theo điểm (CN 2026): <a href="https://m.18183.com/gonglue/202607/mimm44cf.html">18183 7/2026</a>, <a href="https://www.youxiabc.com/p/34468.html">youxiabc 5/2026</a>, <a href="https://www.18183.com/gonglue/202607/83k0p23u.html">18183 S10 kit tối thiểu</a>, <a href="https://www.18183.com/gonglue/202603/n9s1bdrj.html">18183 giá thẻ 3/2026</a></li>
+  <li>Thẻ phòng Global: <a href="https://www.lootbar.com/blog/en/delta-force-zero-dam-key-cards-guide.html">lootbar</a> · Loot và rủi ro: <a href="https://timesaver.gg/blog/delta-force-zero-dam-loot-extraction-guide">timesaver.gg</a>, <a href="https://deltaforceitems.com/blog/delta-force-zero-dam-red-loot-spawns/">deltaforceitems.com</a></li>
+  <li>Map tương tác: <a href="https://deltaforcedb.com/maps/zerodam/">deltaforcedb.com</a>, <a href="https://deltahub.gg/map/zero-dam/operations">deltahub.gg</a>, <a href="https://deltaforcemap.com/ZeroDamKeyRoom">deltaforcemap.com (phòng thẻ)</a>, <a href="https://df.nidcsoft.cn/maps/zero-dam.html">nidcsoft (CN)</a></li>
+  <li>Boss và AI: <a href="https://timesaver.gg/blog/delta-force-bosses-guide">timesaver bosses 23/10/2026</a>, <a href="https://mp1st.com/title-updates-and-patches/delta-force-ahsarah-update-deployed-via-patch-1-037-108">mp1st patch 1.037.108</a></li>
+  <li>Súng giá rẻ 8/2026: <a href="https://arctopup.com/blog/delta-force-operations-budget-guns-tier-list-august-2026">arctopup.com</a> · Safe Box: <a href="https://timesaver.gg/blog/delta-force-safe-box-guide-upgrade-3x3">timesaver.gg</a> · Tỉ lệ thoát solo: <a href="https://news.bittopup.com/news/delta-force-solo-mode-issues-before-dfiw-2026-the-honest-data-backed-bre-26a885bd">bittopup 6/2026</a></li>
+  <li>Benchmark lợi nhuận CN: <a href="https://www.h33.top/report/20260913-e13d">h33.top 13/9/2026</a>, <a href="https://www.233leyuan.com/post-detail/2066574108945903616">233leyuan 16/6/2026</a></li>
+  <li>Rotation S11: <a href="https://timesaver.gg/blog/delta-force-map-rotation-schedule">timesaver 20/10/2026</a> · Nguồn VN mẹo bán đồ: <a href="https://cellphones.com.vn/sforum/operation-delta-force">cellphones.com.vn</a>, <a href="https://hoanghamobile.com/tin-tuc/operation-delta-force/">hoanghamobile.com</a></li>
+</ul>
+</main>
+</body>
+</html>
