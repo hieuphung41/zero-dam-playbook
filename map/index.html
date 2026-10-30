@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zero Dam Route Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: map fills the viewport; a control panel docks right on desktop and below on phones. */
+:root{
+  --bg:#f3f4f0; --surface:#ffffff; --fg:#1c2220; --muted:#5b6662; --line:#d5d9d3;
+  --accent:#1f6b5c; --accent-soft:#dfeee9; --gold:#a7781a; --gold-soft:#f6ecd2; --red:#b23a2f; --red-soft:#f7e1dd;
+  --blue:#2f5f8f; --blue-soft:#e0eaf4; --route:#ff6a00; --poi:#7a3fa0;
+  --display:"Chakra Petch","Be Vietnam Pro",system-ui,sans-serif; --body:"Be Vietnam Pro",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1d2321; --fg:#e8ebe6; --muted:#9aa49f; --line:#323b37;
+  --accent:#5fc3a8; --accent-soft:#1c312b; --gold:#e0b04a; --gold-soft:#3a3016; --red:#ef7f72; --red-soft:#3d2320;
+  --blue:#7fb0e0; --blue-soft:#1d2b3a; --route:#ff8a3d; --poi:#c08ae0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1d2321; --fg:#e8ebe6; --muted:#9aa49f; --line:#323b37;
+  --accent:#5fc3a8; --accent-soft:#1c312b; --gold:#e0b04a; --gold-soft:#3a3016; --red:#ef7f72; --red-soft:#3d2320;
+  --blue:#7fb0e0; --blue-soft:#1d2b3a; --route:#ff8a3d; --poi:#c08ae0; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;display:grid;grid-template-rows:auto 1fr;}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem;padding:.6rem max(16px,env(safe-area-inset-right,0px)) .6rem max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+header h1{font-family:var(--display);font-size:1.25rem;margin:0;font-weight:700}
+header a{color:var(--accent);font-size:.9rem}
+header .sub{color:var(--muted);font-size:.85rem}
+.wrap{display:grid;grid-template-columns:1fr 380px;min-height:0}
+#map{min-height:0;background:#2b2f2c}
+aside{overflow:auto;border-left:1px solid var(--line);background:var(--surface);padding:.9rem max(16px,env(safe-area-inset-right,0px)) 2rem 1rem;min-width:0}
+@media (max-width:860px){.wrap{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{border-left:0;border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px))}}
+h2{font-family:var(--display);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:1.1rem 0 .4rem}
+h2:first-child{margin-top:0}
+fieldset{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:.4rem .9rem}
+label{display:flex;align-items:center;gap:.35rem;font-size:.92rem}
+select,input[type=range]{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:.35rem}
+input[type=range]{padding:0}
+#keys{display:grid;gap:.25rem}
+#keys .sub{color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+.hint{color:var(--muted)}
+.sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin:.4rem 0 .8rem}
+.sum div{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:.4rem .5rem;min-width:0}
+.sum .lbl{display:block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--display)}
+.sum b{font-variant-numeric:tabular-nums}
+ol.steps{padding-left:1.4rem;margin:.4rem 0}
+ol.steps li{margin:.45rem 0}
+ol.steps li.exit{list-style:none;margin-left:-1.4rem;padding:.5rem .6rem;background:var(--accent-soft);border-radius:4px}
+.sub{color:var(--muted);font-size:.85rem}
+.keyline{color:var(--gold);font-size:.88rem}
+.risk{font-size:.72rem;padding:.05em .45em;border-radius:3px;font-family:var(--display);letter-spacing:.03em;vertical-align:middle}
+.r0,.r1{background:var(--accent-soft);color:var(--accent)}.r2{background:var(--gold-soft);color:var(--gold)}.r3,.r4{background:var(--red-soft);color:var(--red)}
+details{margin:.6rem 0}summary{cursor:pointer;color:var(--accent)}
+ul.alt,ul.warn{padding-left:1.2rem;font-size:.88rem}
+ul.warn{border-left:3px solid var(--gold);padding:.3rem .8rem;margin:.8rem 0;list-style:none;background:var(--gold-soft)}
+.layers{display:flex;flex-wrap:wrap;gap:.3rem .8rem;font-size:.85rem}
+/* markers */
+.mk{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:600 11px var(--display);color:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:pointer}
+.mk.spawn{background:#2f7fd6;width:16px;height:16px;margin:3px}
+.mk.spawn.g{background:#1d4f8a;outline:2px solid #ffb300}
+.mk.spawn.sel{width:24px;height:24px;margin:-1px;background:#2f7fd6}
+.mk.ex{background:#1f6b5c}.mk.ex.random{background:#4a9d8a}.mk.ex.paid,.mk.ex.weight,.mk.ex.drop{background:#a7781a}.mk.ex.lever{background:#b23a2f}
+.mk.ex.sel{transform:scale(1.3)}
+.mk.key{background:#fff;color:#000;font-size:12px;width:20px;height:20px;margin:1px}
+.mk.boss{background:#b23a2f}
+.mk.step{background:var(--route);color:#1c1c1c}
+.leaflet-container{font-family:var(--body)}
+.leaflet-tooltip{font-size:.85rem}
+.leaflet-control-attribution{font-size:.7rem}
+a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Zero Dam Route Planner</h1>
+  <span class="sub">Bấm điểm spawn → nhận lộ trình loot và điểm rút. Dữ liệu tới 30/10/2026.</span>
+  <a href="../">← Bài phân tích</a>
+</header>
+<div class="wrap">
+  <div id="map" role="application" aria-label="Bản đồ Zero Dam"></div>
+  <aside>
+    <h2>1 · Chế độ</h2>
+    <fieldset>
+      <label><input type="radio" name="mode" value="easy" id="mode-easy"> Easy (Dễ)</label>
+      <label><input type="radio" name="mode" value="normal" id="mode-normal" checked> Normal (Thường)</label>
+    </fieldset>
+    <h2>2 · Điểm spawn</h2>
+    <select id="spawnSel"><option value="">— bấm trên map hoặc chọn —</option></select>
+    <h2>3 · Thẻ mang theo</h2>
+    <div id="keys"></div>
+    <h2>4 · Tuỳ chọn</h2>
+    <label>Số cụm loot trước khi rút: <b id="stopsV">2</b></label>
+    <input type="range" id="stops" min="1" max="4" value="2">
+    <label><input type="checkbox" id="wl"> Tôi sẽ giữ dưới giới hạn cân nặng (mở Đỉnh đập)</label>
+    <h2>Lộ trình</h2>
+    <div id="out"></div>
+    <details><summary>Cách tính</summary><p class="sub">Mỗi cụm loot có giá trị kỳ vọng và bậc rủi ro (0–4) lấy từ bài phân tích. Điểm = loot × (1 − p chết) − p chết × (kit + 70% đồ đang mang) − phút × chi phí thời gian. p chết tăng theo bậc rủi ro và theo thời gian đi đường. 30% đồ đang mang coi như đã nằm trong Hộp An Toàn. Thẻ phòng cộng thêm giá trị kỳ vọng của phòng đó. Thứ tự cụm được sắp lại để đi ngắn nhất. Điểm rút chọn theo bên spawn, điều kiện và phí. Đường bảo trì (bỏ ba lô) và thang máy không bao giờ được chọn tự động. Khoảng cách tính theo ảnh, tốc độ ~4 m/s, nên thời gian chỉ là ước lượng.</p></details>
+    <h2>Lớp hiển thị</h2>
+    <div class="layers">
+      <label><input type="checkbox" data-layer="spawn" id="ly-spawn" checked> Spawn</label>
+      <label><input type="checkbox" data-layer="extract" id="ly-extract" checked> Điểm rút</label>
+      <label><input type="checkbox" data-layer="key" id="ly-key" checked> Phòng thẻ</label>
+      <label><input type="checkbox" data-layer="poi" id="ly-poi" checked> Loot / boss</label>
+    </div>
+    <p class="sub" id="credit"></p>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
