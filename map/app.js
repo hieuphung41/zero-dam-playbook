@@ -18,6 +18,8 @@
   const layers = {heat: L.layerGroup().addTo(map), spawn: L.layerGroup().addTo(map), extract: L.layerGroup().addTo(map), key: L.layerGroup().addTo(map),
                   poi: L.layerGroup().addTo(map), box: L.layerGroup().addTo(map), boxAll: L.layerGroup(), mission: L.layerGroup().addTo(map), route: L.layerGroup().addTo(map)};
   const POI = window.ZDPOI || {containers:[], missions:[]};
+  { const cl = ZD.nodes.filter(n=>n.type==='poi');
+    POI.containers.forEach(c=>{ let best=null, bd=Infinity; cl.forEach(n=>{ const d=Math.hypot((c.p[0]-n.p[0])*ZD.image.width,(c.p[1]-n.p[1])*ZD.image.height); if(d<bd){bd=d;best=n.id;} }); c.cluster = bd<=260 ? best : null; c.core = bd<=120; }); }
   /* ---------- icons (inline SVG, one shape per category) ---------- */
   const SVG = {
     person:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-7 2-7 4.5V20h14v-1.5C19 16 16 14 12 14z"/>',
@@ -55,7 +57,7 @@
   map.on('zoomend', setLabelVisibility);
 
   /* ---------- state ---------- */
-  const state = {mode:'normal', spawn:null, keys:new Set(), forced:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14, payMode:'none', contractReward:10000, allowDrop:false};
+  const state = {mode:'normal', spawn:null, keys:new Set(), forced:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14, payMode:'none', contractReward:10000, allowDrop:false, passBy:true};
   const PAY_DEFAULT = {easy:'contracts', normal:'none'};
 
   /* ---------- graph: precomputed raster shortest paths (paths.js) ---------- */
@@ -113,7 +115,8 @@
     const presence = t => t<0.5 ? 0.6 : t<5 ? 1 : t<9 ? 1-0.8*(t-5)/4 : 0.2;
     const rushRisk = (n, t) => n.rush ? avoid*prof.rush*rushers*presence(t) : 0;
     const pathRush = (a, b, tMid) => avoid*prof.rush*rushers*presence(tMid)*Math.min(1, rzone(a,b)/80);
-    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, pd(n.risk)*timing(n,tAtArrival) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12) + rushRisk(n,tAtArrival));
+    const lootRisk = n => 1 - Math.exp(-prof.hazard[n.risk]*n.lootMin);
+    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, lootRisk(n)*timing(n,tAtArrival) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12) + rushRisk(n,tAtArrival));
     const wanted = [...new Set([...state.keys].map(k => ZD.keycards[k].node).concat([...state.forced]))];
     const roomValue = id => [...state.keys].filter(k=>ZD.keycards[k].node===id).reduce((a,k)=>a+ZD.keycards[k].ev,0);
     const valOf = n => ((mode==='easy' ? n.valueEasy : n.valueNormal) || 0) + (wanted.includes(n.id) ? roomValue(n.id) : 0);
@@ -139,10 +142,17 @@
       if(n.cond==='lever') { ok=false; why.push('kéo cần báo động toàn map'); }
       return {ok, why}; };
     // evaluate one ordered plan: legs, extract choice, survival, EV (= expected Alloy after the raid, minus time cost)
+    const nearOf = (a,b) => { const p = pair(a,b); return p && p.nb ? p.nb : []; };
+    function passBy(a, b, visited, taken){ if(!state.passBy) return {ids:[], value:0, min:0};
+      const ids = nearOf(a,b).filter(i=>{ const c=POI.containers[i]; return c.hi && !taken.has(i) && !c.core && !(c.cluster && visited.has(c.cluster)); })  // not in any cluster's core (~50 m), not in a cluster you stop at
+        .sort((x,y)=>POI.containers[y].v-POI.containers[x].v).slice(0, ZD.passBy.max);
+      ids.forEach(i=>taken.add(i));
+      const value = ids.reduce((s,i)=>s+POI.containers[i].v*(mode==='easy'?0.4:1),0)*ZD.passBy.share;
+      return {ids, value, min: ids.length*ZD.passBy.minutes}; }
     function evaluate(order){
-      let c=state.spawn, tMin=0, carried=0, pSurv=1; const legs=[];
-      for(const id of order){ const n=nodes[id]; const m=mdist(c,id); if(m===Infinity) return null; const t=mins(m); const pr=n.rush?0:pathRush(c,id,tMin+t/2); const p=Math.min(0.9, pDeathAt(n,t,tMin+t)+pr);
-        legs.push({id, m, t, lootMin:n.lootMin, p, pressure:pressure[id]||0, rush:rushRisk(n,tMin+t), passRush:pr, value:valOf(n), tAt:tMin+t}); tMin += t + n.lootMin; carried += valOf(n); pSurv *= (1-p); c=id; }
+      let c=state.spawn, tMin=0, carried=0, pSurv=1; const legs=[]; const visited=new Set(order), taken=new Set();
+      for(const id of order){ const n=nodes[id]; const m=mdist(c,id); if(m===Infinity) return null; const t=mins(m); const pb=passBy(c,id,visited,taken); const pr=n.rush?0:pathRush(c,id,tMin+t/2); const p=Math.min(0.9, pDeathAt(n,t+pb.min,tMin+t+pb.min)+pr);
+        legs.push({id, m, t, lootMin:n.lootMin, p, pressure:pressure[id]||0, rush:rushRisk(n,tMin+t), passRush:pr, value:valOf(n), tAt:tMin+t+pb.min, pb}); tMin += t + pb.min + n.lootMin; carried += valOf(n) + pb.value; pSurv *= (1-p); c=id; }
       const stations = stationsNear([state.spawn].concat(order));
       const cands = extracts.map(n=>{ const {ok,why}=extractOk(n, stations); const m=mdist(c,n.id); const t=mins(m), wt=mins(wdist(c,n.id)); const fee=feeOf(n);
         // contracts done for the fee cost time and exposure
@@ -152,17 +162,19 @@
         const score = (ok && m!==Infinity) ? -(p*(prof.kit + 0.7*carried)) - (wt+cMin)*prof.minuteCost - fee - lost : -Infinity;
         return {n, ok: ok && m!==Infinity, why, fee, t, m, p, score, cMin, contracts: useC ? stations.slice(0,needContracts) : []}; }).sort((a,b)=>b.score-a.score);
       const ex = cands[0]; if(!ex || !ex.ok) return null;
-      const pAll = pSurv*(1-ex.p); const tTot = tMin + ex.t + ex.cMin; const dist = legs.reduce((a,l)=>a+l.m,0) + ex.m;
+      const exPb = passBy(c, ex.n.id, visited, taken); carried += exPb.value;
+      const pAll = pSurv*(1-ex.p); const tTot = tMin + ex.t + ex.cMin + exPb.min; const dist = legs.reduce((a,l)=>a+l.m,0) + ex.m;
       const kept = ex.n.cond==='drop' ? carried*ZD.dropKeep : carried;
       const ev = pAll*kept - (1-pAll)*(prof.kit + 0.7*carried) - ex.fee - tTot*prof.minuteCost - (ex.n.cond==='drop' ? 0 : 0);
-      return {order, legs, extract:ex, alternatives:cands.slice(1,5), allCands:cands, tMin:tTot, value:carried, kept, pSurv:pAll, ev, dist, stations};
+      return {order, legs, extract:ex, exPb, alternatives:cands.slice(1,5), allCands:cands, tMin:tTot, value:carried, kept, pSurv:pAll, ev, dist, stations};
     }
     // exhaustive search over stop sets (≤ stopsN clusters + the rooms you hold cards for), every order
     const pois = ZD.nodes.filter(n=>n.type==='poi' && valOf(n)>0 && !wanted.includes(n.id)).map(n=>n.id);
     const perms = arr => arr.length<=1 ? [arr] : arr.flatMap((x,i)=>perms(arr.slice(0,i).concat(arr.slice(i+1))).map(r=>[x].concat(r)));
     const combos = (arr,k) => k===0 ? [[]] : arr.flatMap((x,i)=>combos(arr.slice(i+1),k-1).map(r=>[x].concat(r)));
+    // exactly stopsN clusters (plus card rooms / forced stops); fall back to fewer only if nothing fits the time budget
     let best=null;
-    for(let k=0;k<=stopsN;k++) combos(pois,k).forEach(set=>{ perms(set.concat(wanted)).forEach(order=>{ const r=evaluate(order); if(!r) return;
+    for(let k=stopsN;k>=0 && !best;k--) combos(pois,k).forEach(set=>{ perms(set.concat(wanted)).forEach(order=>{ const r=evaluate(order); if(!r) return;
       if(r.tMin - (r.extract.t) > maxLootMin && order.length>wanted.length) return;
       if(!best || r.ev>best.ev) best=r; }); });
     if(!best) best = evaluate(wanted) || {order:[], legs:[], extract:null, alternatives:[], tMin:0, value:0, pSurv:1, ev:0, dist:0};
@@ -232,6 +244,8 @@
     let k=1; r.stops.forEach(id=>{ L.marker(toLL(nodes[id].p), {icon: icons.step(k++), zIndexOffset:600}).addTo(layers.route); });
     L.marker(toLL(nodes[state.spawn].p), {icon: icons.spawn(nodes[state.spawn],true), zIndexOffset:700}).addTo(layers.route);
     if(r.extract && r.extract.ok) L.marker(toLL(r.extract.n.p), {icon: icons.extract(r.extract.n,true), zIndexOffset:700}).addTo(layers.route);
+    const pbAll = r.legs.flatMap(l=>l.pb?l.pb.ids:[]).concat(r.exPb?r.exPb.ids:[]);
+    pbAll.forEach(i=>{ const c=POI.containers[i]; L.circleMarker(toLL(c.p), {radius:11, color:'#ff6a00', weight:3, fill:false, interactive:false}).addTo(layers.route); });
     (r.extract && r.extract.contracts || []).forEach((s,k2)=>{ const ms=POI.missions[s.i];
       L.polyline([toLL(nodes[s.near].p), toLL(ms.p)], {color:'#ff6a00', weight:3, dashArray:'5 5', opacity:.95}).addTo(layers.route);
       L.marker(toLL(ms.p), {icon: L.divIcon({className:'mkw z-ms', html:`<div class="ms ct${ms.hv?' hv':''}"><span>!${k2+1}</span></div>`, iconSize:[24,24], iconAnchor:[12,12]}), zIndexOffset:650}).addTo(layers.route)
@@ -249,14 +263,16 @@
     if(state.forced.size){ const free = (()=>{ const f=new Set(state.forced); state.forced=new Set(); const x=plan(); state.forced=f; return x; })();
       html += `<div class="forced">Ép ghé: ${[...state.forced].map(id=>`<span class="chip">${nodes[id].name} <button type="button" class="unforce" data-id="${id}" aria-label="bỏ">×</button></span>`).join(' ')}<br><span class="sub">So với tuyến tự do (${free.stops.map(id=>nodes[id].name.split(' (')[0]).join(' → ')||'không loot'}): EV ${free.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(free.ev)/1000))}k, sống ${pct(free.pSurv)} → tuyến ép: EV ${r.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(r.ev)/1000))}k, sống ${pct(r.pSurv)}.</span></div>`; }
     html += '<ol class="steps">';
+    const pbText = pb => { if(!pb || !pb.ids.length) return ''; const by={}; pb.ids.forEach(i=>{ const nm=POI.containers[i].n; by[nm]=(by[nm]||0)+1; });
+      return `<br><span class="pbline">Nhặt dọc đường: ${Object.entries(by).map(([k4,v])=>v+' '+k4.toLowerCase()).join(', ')} (~${fmt(Math.round(pb.value/1000))}k, +${pb.min.toFixed(1)} ph), vòng cam trên map</span>`; };
     r.legs.forEach(l=>{ const n=nodes[l.id]; const keys=[...state.keys].filter(kk=>ZD.keycards[kk].node===l.id);
       const near = POI.missions.filter(ms=>Math.hypot((ms.p[0]-n.p[0])*ZD.image.metersX,(ms.p[1]-n.p[1])*ZD.image.metersY) < 65).length;
-      html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}${l.rush>0.03?' · <span class="hot">tới phút '+l.tAt.toFixed(1)+': đội một hiệu đang lao vào Admin</span>':''}${l.passRush>0.03?' · <span class="hot">đường đi cắt qua Admin lúc các đội đang lao vào</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 65 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
+      html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}${l.rush>0.03?' · <span class="hot">tới phút '+l.tAt.toFixed(1)+': đội một hiệu đang lao vào Admin</span>':''}${l.passRush>0.03?' · <span class="hot">đường đi cắt qua Admin lúc các đội đang lao vào</span>':''}</span><br><span class="sub">${n.loot}</span>${pbText(l.pb)}${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 65 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
     if(r.extract && r.extract.ok){ const e=r.extract.n; const cts=r.extract.contracts||[];
       if(cts.length){ const byStop={}; cts.forEach(s=>{ const nm=nodes[s.near].name.split(' (')[0]; byStop[nm]=(byStop[nm]||0)+1; });
         html += `<li class="contract"><b>Làm ${cts.length} hợp đồng để đủ ${fmt(r.extract.fee)} hợp kim</b><br><span class="sub">${Object.entries(byStop).map(([k3,v])=>`${v} ở trạm gần ${k3}`).join(', ')} · thêm ~${r.extract.cMin.toFixed(1)} phút · giả định ${fmt(state.contractReward)} hợp kim mỗi hợp đồng. Nhận hợp đồng ngay khi tới cụm, làm xong trước khi rút.</span></li>`; }
       const fb = e.cond==='random' ? (r.allCands||[]).find(x=>x.ok && x.n.cond!=='random') : null;
-      html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b><br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span>${fb?`<br><span class="sub"><b>Không thấy khói xanh:</b> đi ${fb.n.letter} · ${fb.n.name} (~${Math.round(fb.t)} phút từ cụm cuối${fb.fee?', phí '+fmt(fb.fee):''}).</span>`:''}</li>`; }
+      html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b>${pbText(r.exPb)}<br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span>${fb?`<br><span class="sub"><b>Không thấy khói xanh:</b> đi ${fb.n.letter} · ${fb.n.name} (~${Math.round(fb.t)} phút từ cụm cuối${fb.fee?', phí '+fmt(fb.fee):''}).</span>`:''}</li>`; }
     else html += `<li class="exit"><b>Không có điểm rút phù hợp</b> với điều kiện đã chọn.</li>`;
     html += '</ol>';
     html += '<details><summary>Điểm rút dự phòng</summary><ul class="alt">' + r.alternatives.map(a=>`<li><b>${a.n.letter} · ${a.n.name}</b> — ${a.ok?('~'+Math.round(a.t)+' phút'+(a.fee?', phí '+fmt(a.fee):'')+(a.contracts&&a.contracts.length?`, cần ${a.contracts.length} hợp đồng (+${a.cMin.toFixed(1)} ph), EV thấp hơn tuyến đang chọn`:'')):a.why.join('; ')}</li>`).join('') + '</ul></details>';
@@ -280,8 +296,9 @@
     out.querySelectorAll('.unforce').forEach(b=>b.addEventListener('click', ()=>{ state.forced.delete(b.dataset.id); render(); }));
     // options table: 1 / 2 / 3 clusters
     const rows = [1,2,3].map(n=>({n, r: plan({stops:n, maxLootMin: n===1?8:(n===2?14:20)})}));
-    opt.innerHTML = '<table class="opts"><thead><tr><th>Cụm</th><th>Loot</th><th>Phút</th><th>Sống</th><th>EV</th><th></th></tr></thead><tbody>' + rows.map(({n,r:x})=>
-      `<tr class="${n===state.stops?'cur':''}"><td>${n}</td><td class="num">${fmt(Math.round(x.value/1000))}k</td><td class="num">${Math.round(x.tMin)}</td><td class="num">${pct(x.pSurv)}</td><td class="num">${x.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(x.ev)/1000))}k</td><td><button type="button" class="pickopt" data-n="${n}">${n===state.stops?'đang xem':'xem'}</button></td></tr>`).join('') + '</tbody></table>';
+    const bestN = rows.reduce((b,x)=> x.r.ev > b.r.ev ? x : b, rows[0]).n;
+    opt.innerHTML = '<p class="sub">Mỗi dòng là tuyến tốt nhất khi dừng đúng số cụm đó. Cụm: '+rows.map(x=>x.n+' = '+(x.r.stops.map(id=>nodes[id].name.split(' (')[0].split(' / ')[0]).join(' → ')||'không')).join(' · ')+'</p><table class="opts"><thead><tr><th>Cụm</th><th>Loot</th><th>Phút</th><th>Sống</th><th>EV</th><th></th></tr></thead><tbody>' + rows.map(({n,r:x})=>
+      `<tr class="${n===state.stops?'cur':''}"><td>${n}${n===bestN?' <span class="chip">khuyên dùng</span>':''}</td><td class="num">${fmt(Math.round(x.value/1000))}k</td><td class="num">${Math.round(x.tMin)}</td><td class="num">${pct(x.pSurv)}</td><td class="num">${x.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(x.ev)/1000))}k</td><td><button type="button" class="pickopt" data-n="${n}">${n===state.stops?'đang xem':'xem'}</button></td></tr>`).join('') + '</tbody></table>';
     opt.querySelectorAll('.pickopt').forEach(b=>b.addEventListener('click', ()=>{ state.stops=+b.dataset.n; state.maxLootMin = state.stops===1?8:(state.stops===2?14:20); document.querySelectorAll('input[name=goal]').forEach(x=>x.checked = +x.value===state.stops); render(); }));
   }
 
@@ -305,6 +322,7 @@
   $('#avoid').addEventListener('input', e=>{ state.avoid=+e.target.value; $('#avoidV').textContent=['tắt','thấp','vừa','cao','rất cao'][Math.round(+e.target.value*2)]; render(); });
   $('#wl').addEventListener('change', e=>{ state.weightLimit=e.target.checked; render(); });
   $('#drop').addEventListener('change', e=>{ state.allowDrop=e.target.checked; render(); });
+  $('#passby').addEventListener('change', e=>{ state.passBy=e.target.checked; render(); });
   document.querySelectorAll('[data-layer]').forEach(cb=>{ const l=layers[cb.dataset.layer]; if(cb.checked && !map.hasLayer(l)) map.addLayer(l); if(!cb.checked && map.hasLayer(l)) map.removeLayer(l);
     cb.addEventListener('change', e=>{ e.target.checked?map.addLayer(l):map.removeLayer(l); }); });
 

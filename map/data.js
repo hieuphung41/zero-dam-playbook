@@ -89,12 +89,13 @@
   window.ZD = {
     image:{src:'zero-dam.jpg?v=3fcdb2c412', width:2400, height:2100, metersX:950, metersY:832,
       credit:'Nền: deltaforcedb.com (bố cục trước S9, sông phía Nam hẹp hơn thực tế) © Tencent / Team Jade. Marker: công cụ map chính thức df.qq.com (9/2026). Giá trị loot: ước lượng.'},
-    profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, rush:0.08, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, rush:0.13, minuteCost:10000, maxLootMin:14}},
+    profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, rush:0.08, hazard:[0.002,0.005,0.012,0.03,0.055], minuteCost:4000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, rush:0.13, hazard:[0.004,0.009,0.022,0.05,0.09], minuteCost:7000, maxLootMin:14}},
     /* spawn rule (community guide image, 2026-01-19, matches the 14 official spawn markers): each side has 3 squads —
        exactly ONE squad in its "#1" pair (one position or the other, never both) and 2 squads among its 5 other spots */
     squads:{W:{pair:['s4','s5'], random:['s1','s2','s3','s6','s7'], randomSquads:2},
             E:{pair:['s8','s11'], random:['s9','s10','s12','s13','s14'], randomSquads:2}},
     contract:{minutes:1.5, radius:65},
+    passBy:{share:0.6, minutes:0.25, max:3},  // high-value containers within ~20 m of the path: share of value grabbed, minutes each
     dropKeep:0.6,   // drop-backpack exit: share of loot value assumed kept in Safe Box + chest rig (assumption)  // time per in-raid contract (assumption) and how close a station must be to a stop
     nodes, edges, keycards
   };
