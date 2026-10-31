@@ -36,21 +36,21 @@
   add('boss','boss',2285,1158,{name:'Saeed (Fiery Owl Guard) — sảnh/cầu thang Toà Đông'});
 
   /* loot clusters: valueNormal / valueEasy = rough expected Alloy from one pass; risk 0–4; lootMin = minutes to clear */
-  add('barracks','poi',1552,934,{name:'Doanh trại', valueNormal:180000, valueEasy:70000, risk:1, lootMin:3, loot:'kệ + bàn máy tính 1F, bàn 2F; 1 server, hồ sơ, điện tử'});
-  add('westField','poi',1100,1050,{name:'Trại dã ngoại Tây Bắc', valueNormal:80000, valueEasy:40000, risk:0, lootMin:2, loot:'thùng tiếp tế dã ngoại, túi, tổ chim'});
-  add('cement','poi',1471,1441,{name:'Nhà máy xi măng', valueNormal:300000, valueEasy:110000, risk:2, lootMin:4, loot:'sàn dưới bồn tròn, phòng dưới hòm súng, phòng máy tính 2F Đông Nam, vàng thỏi ở máy cổng'});
-  add('pipeline','poi',1560,1740,{name:'Công trường ống nước / bờ sông Tây', valueNormal:150000, valueEasy:60000, risk:1, lootMin:3, loot:'11 tủ dụng cụ dọc sông, túi du lịch, thùng tiếp tế, tổ chim'});
-  add('river','poi',1800,1900,{name:'Vùng nước phía Nam (S9)', valueNormal:120000, valueEasy:60000, risk:1, lootMin:3, loot:'thuyền (nhiên liệu, điện tử), 2 túi du lịch, tổ chim Vlindflower; hang ngầm giá trị thấp'});
-  add('underground','poi',2040,1540,{name:'Đường hầm ngầm (Tây → Trạm biến áp)', valueNormal:140000, valueEasy:60000, risk:2, lootMin:3, loot:'túi, tủ dụng cụ, thùng chuyển phát; phòng thẻ Lối ngầm'});
-  add('adminW','poi',2170,1050,{name:'Toà Tây (Khu hành chính)', valueNormal:450000, valueEasy:150000, risk:4, lootMin:4, loot:'WC 2F (Rolex), bàn văn phòng, quầy nước, bàn cạnh phòng cầu dao; 3 phòng thẻ; công tắc thang máy'});
-  add('adminE','poi',2310,1130,{name:'Toà Đông (Khu hành chính)', valueNormal:500000, valueEasy:160000, risk:4, lootMin:4, loot:'văn phòng 2F, két 2F, quầy lễ tân; Manager\'s Office, Equipment Room; boss Saeed ngay dưới'});
-  add('adminOut','poi',2300,960,{name:'Vành đai Admin (container, bãi đỗ, công trường)', valueNormal:200000, valueEasy:80000, risk:3, lootMin:3, loot:'6 hầm giấu đồ, thùng tiếp tế dã ngoại, túi; chokepoint cầu cạnh bãi container'});
-  add('vault','poi',2440,690,{name:'Lòng đập / kho vàng', valueNormal:350000, valueEasy:0, risk:4, lootMin:4, loot:'20 đống xu vàng, két; chỉ mở qua nhiệm vụ Gold/Wall Breaker, có gas và guard của Saeed'});
-  add('mainSub','poi',2380,1640,{name:'Trạm biến áp chính', valueNormal:380000, valueEasy:120000, risk:3, lootMin:4, loot:'3 server, két (thẻ), chốt bảo vệ cổng, phòng flight-case 2F; Tech Room (thẻ)'});
-  add('smallSub','poi',2160,1862,{name:'Trạm biến áp phụ', valueNormal:220000, valueEasy:80000, risk:2, lootMin:3, loot:'két nhỏ, flight case, sàn giữa 2 máy phát, nóc thùng gỗ; phòng ký túc (thẻ rẻ nhất)'});
-  add('visitor','poi',2919,2069,{name:'Trung tâm du khách', valueNormal:260000, valueEasy:100000, risk:1, lootMin:4, loot:'phòng nhỏ 2F bên phải, bar 1F, bàn máy tính 1F, bàn trà 2F, WC 1F; 4 vali cao cấp, 3 hầm giấu đồ'});
-  add('eastField','poi',2860,1540,{name:'Đồi phía Đông', valueNormal:90000, valueEasy:40000, risk:1, lootMin:2, loot:'thùng tiếp tế, tổ chim, túi; đường rotation E4↔E5'});
-  add('damTopE','poi',3050,1170,{name:'Đỉnh đập Đông / trạm bảo trì', valueNormal:100000, valueEasy:40000, risk:2, lootMin:2, loot:'phòng bàn medkit, thùng dã ngoại; sát điểm rút F'});
+  add('barracks','poi',1552,934,{name:'Doanh trại', valueNormal:175000, valueEasy:70000, risk:1, lootMin:3, loot:'kệ + bàn máy tính 1F, bàn 2F; 1 server, hồ sơ, điện tử'});
+  add('westField','poi',1100,1050,{name:'Trại dã ngoại Tây Bắc', valueNormal:72000, valueEasy:28800, risk:0, lootMin:2, loot:'thùng tiếp tế dã ngoại, túi, tổ chim'});
+  add('cement','poi',1471,1441,{name:'Nhà máy xi măng', valueNormal:325000, valueEasy:130000, risk:2, lootMin:4, loot:'sàn dưới bồn tròn, phòng dưới hòm súng, phòng máy tính 2F Đông Nam, vàng thỏi ở máy cổng'});
+  add('pipeline','poi',1560,1740,{name:'Công trường ống nước / bờ sông Tây', valueNormal:105000, valueEasy:42000, risk:1, lootMin:3, loot:'11 tủ dụng cụ dọc sông, túi du lịch, thùng tiếp tế, tổ chim'});
+  add('river','poi',1800,1900,{name:'Vùng nước phía Nam (S9)', valueNormal:90000, valueEasy:36000, risk:1, lootMin:3, loot:'thuyền (nhiên liệu, điện tử), 2 túi du lịch, tổ chim Vlindflower; hang ngầm giá trị thấp'});
+  add('underground','poi',2040,1540,{name:'Đường hầm ngầm (Tây → Trạm biến áp)', valueNormal:100000, valueEasy:40000, risk:2, lootMin:3, loot:'túi, tủ dụng cụ, thùng chuyển phát; phòng thẻ Lối ngầm'});
+  add('adminW','poi',2170,1050,{name:'Toà Tây (Khu hành chính)', valueNormal:500000, valueEasy:200000, risk:4, lootMin:4, loot:'WC 2F (Rolex), bàn văn phòng, quầy nước, bàn cạnh phòng cầu dao; 3 phòng thẻ; công tắc thang máy'});
+  add('adminE','poi',2310,1130,{name:'Toà Đông (Khu hành chính)', valueNormal:520000, valueEasy:208000, risk:4, lootMin:4, loot:'văn phòng 2F, két 2F, quầy lễ tân; Manager\'s Office, Equipment Room; boss Saeed ngay dưới'});
+  add('adminOut','poi',2300,960,{name:'Vành đai Admin (container, bãi đỗ, công trường)', valueNormal:215000, valueEasy:86000, risk:3, lootMin:3, loot:'6 hầm giấu đồ, thùng tiếp tế dã ngoại, túi; chokepoint cầu cạnh bãi container'});
+  add('vault','poi',2440,690,{name:'Lòng đập / kho vàng', valueNormal:350000, valueEasy:140000, risk:4, lootMin:4, loot:'20 đống xu vàng, két; chỉ mở qua nhiệm vụ Gold/Wall Breaker, có gas và guard của Saeed'});
+  add('mainSub','poi',2380,1640,{name:'Trạm biến áp chính', valueNormal:360000, valueEasy:144000, risk:3, lootMin:4, loot:'3 server, két (thẻ), chốt bảo vệ cổng, phòng flight-case 2F; Tech Room (thẻ)'});
+  add('smallSub','poi',2160,1862,{name:'Trạm biến áp phụ', valueNormal:160000, valueEasy:64000, risk:2, lootMin:3, loot:'két nhỏ, flight case, sàn giữa 2 máy phát, nóc thùng gỗ; phòng ký túc (thẻ rẻ nhất)'});
+  add('visitor','poi',2919,2069,{name:'Trung tâm du khách', valueNormal:305000, valueEasy:122000, risk:1, lootMin:4, loot:'phòng nhỏ 2F bên phải, bar 1F, bàn máy tính 1F, bàn trà 2F, WC 1F; 4 vali cao cấp, 3 hầm giấu đồ'});
+  add('eastField','poi',2860,1540,{name:'Đồi phía Đông', valueNormal:60000, valueEasy:24000, risk:1, lootMin:2, loot:'thùng tiếp tế, tổ chim, túi; đường rotation E4↔E5'});
+  add('damTopE','poi',3050,1170,{name:'Đỉnh đập Đông / trạm bảo trì', valueNormal:50000, valueEasy:20000, risk:2, lootMin:2, loot:'phòng bàn medkit, thùng dã ngoại; sát điểm rút F'});
 
   /* waypoints (roads) */
   add('wCemS','wp',1330,1590); add('wTunW','wp',1713,1518); add('wN','wp',1900,980); add('wNE','wp',2700,1150);
@@ -89,7 +89,8 @@
   window.ZD = {
     image:{src:'zero-dam.jpg', width:2400, height:2100, metersX:1800, metersY:1575,
       credit:'Nền: deltaforcedb.com (bố cục trước S9, sông phía Nam hẹp hơn thực tế) © Tencent / Team Jade. Marker: công cụ map chính thức df.qq.com (9/2026). Giá trị loot: ước lượng.'},
-    profiles:{easy:{kit:0, pDeath:[0.01,0.03,0.08,0.18,0.30], pTravel:0.01, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.06,0.14,0.28,0.45], pTravel:0.025, minuteCost:10000, maxLootMin:14}},
+    profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, minuteCost:10000, maxLootMin:14}},
+    squads:{perSide:3, guaranteed:{E:{s8:1}, W:{s4:0.5, s5:0.5}}},
     nodes, edges, keycards
   };
 })();

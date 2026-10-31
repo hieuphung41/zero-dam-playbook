@@ -80,6 +80,23 @@ ul.warn{border-left:3px solid var(--gold);padding:.3rem .8rem;margin:.8rem 0;lis
 .lbl-ex{background:rgba(20,110,70,.9)}.lbl-ky{background:rgba(120,85,10,.9)}.lbl-bs{background:rgba(160,30,30,.9)}.lbl-po{background:rgba(90,40,120,.85)}
 .z-low .lbl-sp,.z-low .lbl-ky,.z-low .lbl-po,.z-mid .lbl-ky{display:none}
 .z-low .mkw.z-ky,.z-low .mkw.z-po{opacity:.75}
+/* containers, missions, options */
+.bx{width:100%;height:100%;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.6);font:700 9px var(--display);color:#fff;display:flex;align-items:center;justify-content:center}
+.bx.hi{border-width:2px;font-size:10px}
+.ms{width:100%;height:100%;transform:rotate(45deg);background:#ffb300;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.6);font:700 11px var(--display);color:#1c1c1c;display:flex;align-items:center;justify-content:center}
+.ms.hv{background:#ff5722;color:#fff}
+.ms>*{transform:rotate(-45deg)}
+.z-low .mkw.z-bx,.z-mid .mkw.z-bx{display:none}
+.z-low .mkw.z-ms{opacity:.6}
+table.opts{border-collapse:collapse;width:100%;font-size:.85rem;margin:.3rem 0}
+table.opts th,table.opts td{padding:.3rem .4rem;border-bottom:1px solid var(--line);text-align:left}
+table.opts th{font:600 .72rem var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+table.opts td.num{font-variant-numeric:tabular-nums;text-align:right}
+table.opts tr.cur td{background:var(--accent-soft)}
+table.opts button{font:600 11px var(--display);background:var(--accent);color:#fff;border:0;border-radius:3px;padding:.2rem .5rem;cursor:pointer}
+.sum{grid-template-columns:1fr 1fr 1fr}
+.hot{color:var(--red);font-weight:600}
+ol.sub{color:var(--muted);font-size:.88rem;padding-left:1.2rem}
 /* legend + popups */
 #legendBtn{position:absolute;left:10px;bottom:28px;z-index:900;font:600 12px var(--display);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:.35rem .6rem;cursor:pointer}
 #legend{position:absolute;left:10px;bottom:62px;z-index:900;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.5rem .7rem;font-size:.8rem;display:grid;gap:.25rem;max-width:230px}
@@ -128,19 +145,38 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
     <select id="spawnSel"><option value="">— bấm trên map hoặc chọn —</option></select>
     <h2>3 · Thẻ mang theo</h2>
     <div id="keys"></div>
-    <h2>4 · Tuỳ chọn</h2>
-    <label>Số cụm loot trước khi rút: <b id="stopsV">2</b></label>
-    <input type="range" id="stops" min="1" max="4" value="2">
+    <h2>4 · Mục tiêu</h2>
+    <fieldset>
+      <label><input type="radio" name="goal" value="1" id="goal-1"> Nhanh gọn (1 cụm, ≤ 8 ph)</label>
+      <label><input type="radio" name="goal" value="2" id="goal-2" checked> Cân bằng (2 cụm, ≤ 14 ph)</label>
+      <label><input type="radio" name="goal" value="3" id="goal-3"> Tham loot (3 cụm, ≤ 20 ph)</label>
+    </fieldset>
+    <label>Né giao tranh: <b id="avoidV">vừa</b></label>
+    <input type="range" id="avoid" min="0" max="2" step="0.5" value="1">
     <label><input type="checkbox" id="wl"> Tôi sẽ giữ dưới giới hạn cân nặng (mở Đỉnh đập)</label>
+    <h2>So sánh phương án</h2>
+    <div id="options"></div>
     <h2>Lộ trình</h2>
     <div id="out"></div>
-    <details><summary>Cách tính</summary><p class="sub">Mỗi cụm loot có giá trị kỳ vọng và bậc rủi ro (0–4) lấy từ bài phân tích. Điểm = loot × (1 − p chết) − p chết × (kit + 70% đồ đang mang) − phút × chi phí thời gian. p chết tăng theo bậc rủi ro và theo thời gian đi đường. 30% đồ đang mang coi như đã nằm trong Hộp An Toàn. Thẻ phòng cộng thêm giá trị kỳ vọng của phòng đó. Thứ tự cụm được sắp lại để đi ngắn nhất. Điểm rút chọn theo bên spawn, điều kiện và phí. Đường bảo trì (bỏ ba lô) và thang máy không bao giờ được chọn tự động. Khoảng cách tính theo ảnh, tốc độ ~4 m/s, nên thời gian chỉ là ước lượng.</p></details>
+    <details><summary>Cách bấm để ra tuyến tốt nhất</summary><ol class="sub">
+      <li>Chọn Easy/Normal đúng với trận bạn vào.</li>
+      <li>Bấm chấm xanh đúng chỗ bạn spawn. Các spawn khác hiện % có đội địch, vùng đỏ là nơi địch xuất phát.</li>
+      <li>Tick thẻ phòng bạn mang theo (hoặc bấm icon thẻ trên map rồi "Tôi mang thẻ này").</li>
+      <li>Nhìn bảng "So sánh phương án": chọn số cụm có EV cao nhất mà tỉ lệ sống bạn chấp nhận được. Vốn ít thì ưu tiên sống sót, không ưu tiên loot.</li>
+      <li>Kéo "Né giao tranh" lên cao nếu spawn của bạn bị kẹp giữa nhiều % đỏ; kéo xuống nếu bạn có kit tốt.</li>
+      <li>Bật lớp "Rương giá trị cao" rồi zoom vào cụm được chọn để biết két/server nằm ở toà nào trước khi vào.</li>
+    </ol></details>
+    <details><summary>Cách tính</summary><p class="sub">Trang thử mọi tổ hợp cụm loot (tối đa số cụm bạn chọn, cộng phòng bạn có thẻ) theo mọi thứ tự, rồi chọn phương án có EV cao nhất. EV = p sống × loot − (1 − p sống) × (kit + 70% loot đang mang) − phí rút − phút × chi phí thời gian. p chết ở mỗi cụm = bậc rủi ro của cụm + thời gian đi đường + áp lực địch. Áp lực địch = tổng xác suất có đội địch ở từng spawn nhân với độ gần theo đường đi (thang 250 m), giảm dần theo phút vì địch đã di chuyển. Luật spawn: 14 điểm, 3 đội mỗi bên, bên Đông luôn có đội ở E1, bên Tây luôn có đội ở W4 hoặc W5 (50/50), các đội còn lại chia đều các điểm trống. Giá trị cụm tính từ số két, server, máy tính, vali, hòm súng, hầm giấu đồ trong dữ liệu map chính thức, trộn với các điểm đồ đỏ theo guide. Khoảng cách tính theo đường vẽ tay trên ảnh, tốc độ ~4 m/s, nên thời gian là ước lượng.</p></details>
     <h2>Lớp hiển thị</h2>
     <div class="layers">
       <label><input type="checkbox" data-layer="spawn" id="ly-spawn" checked> Spawn</label>
       <label><input type="checkbox" data-layer="extract" id="ly-extract" checked> Điểm rút</label>
       <label><input type="checkbox" data-layer="key" id="ly-key" checked> Phòng thẻ</label>
-      <label><input type="checkbox" data-layer="poi" id="ly-poi" checked> Loot / boss</label>
+      <label><input type="checkbox" data-layer="poi" id="ly-poi" checked> Cụm loot / boss</label>
+      <label><input type="checkbox" data-layer="box" id="ly-box" checked> Rương giá trị cao</label>
+      <label><input type="checkbox" data-layer="boxAll" id="ly-boxall"> Rương thường</label>
+      <label><input type="checkbox" data-layer="mission" id="ly-mission" checked> Trạm nhiệm vụ</label>
+      <label><input type="checkbox" data-layer="heat" id="ly-heat" checked> Vùng địch spawn</label>
     </div>
     <p class="sub" id="credit"></p>
   </aside>
@@ -148,6 +184,7 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data.js"></script>
 <script src="paths.js"></script>
+<script src="poi.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
