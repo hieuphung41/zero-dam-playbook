@@ -62,6 +62,12 @@ const SPAWNS=['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s1
     await page.check('#mode-easy'); await page.waitForTimeout(400);
     say(`[${vp.name}] chuyển Dễ: pay=${await page.$eval('#pay',e=>e.value)} exit=${await exitOf()} fallback=${(await page.$('#out li.exit .sub b'))?'có':'không'}`);
     await page.check('#mode-normal'); await page.waitForTimeout(300); say(`[${vp.name}] về Thường: pay=${await page.$eval('#pay',e=>e.value)}`);
+    // exit sides: west spawn + weight -> F allowed; east spawn + weight -> F never; east + drop -> E possible
+    await page.selectOption('#pay','none'); await page.waitForTimeout(200);
+    await page.selectOption('#spawnSel','s2'); await page.check('#wl'); await page.waitForTimeout(300); say(`[${vp.name}] W2 + dưới 30kg: ${await exitOf()}`);
+    await page.selectOption('#spawnSel','s13'); await page.waitForTimeout(300); say(`[${vp.name}] E6 + dưới 30kg (F không được phép): ${await exitOf()}`);
+    await page.check('#drop'); await page.waitForTimeout(300); say(`[${vp.name}] E6 + chấp nhận bỏ ba lô: ${await exitOf()}`);
+    await page.uncheck('#drop'); await page.uncheck('#wl');
     // layers toggles
     for(const ly of ['ly-heat','ly-box','ly-mission']){ await page.uncheck('#'+ly); await page.waitForTimeout(150); }
     const after=await page.evaluate(()=>({heat:document.querySelectorAll('.leaflet-overlay-pane path').length, box:document.querySelectorAll('.mkw.z-bx').length, ms:document.querySelectorAll('.mkw.z-ms').length}));

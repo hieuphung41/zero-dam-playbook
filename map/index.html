@@ -167,7 +167,8 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
     </fieldset>
     <label>Né giao tranh: <b id="avoidV">vừa</b></label>
     <input type="range" id="avoid" min="0" max="2" step="0.5" value="1">
-    <label><input type="checkbox" id="wl"> Tôi giữ tổng cân nặng dưới 30 kg ở Thường, 50 kg ở Dễ (mở Đỉnh đập)</label>
+    <label><input type="checkbox" id="wl"> Spawn Tây: tôi giữ tổng cân nặng dưới 30 kg ở Thường, 50 kg ở Dễ (mở Đỉnh đập F)</label>
+    <label><input type="checkbox" id="drop"> Spawn Đông: chấp nhận bỏ ba lô để rút ở Đường bảo trì E (đồ quý để trong Hộp An Toàn, áo chiến thuật)</label>
     <label for="pay">Rút trả phí ở Bờ sông</label>
     <select id="pay">
       <option value="none">Không đủ hợp kim, bỏ điểm này</option>
@@ -189,7 +190,7 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
       <li>Bật lớp "Rương giá trị cao" rồi zoom vào cụm được chọn để biết két/server nằm ở toà nào trước khi vào.</li>
       <li>Muốn thử một cụm mà máy không chọn (ví dụ bãi container cạnh Admin): bấm hình thoi tím của cụm đó rồi "Ép ghé cụm này". Trang sẽ ghép cụm đó vào tuyến và cho biết EV, tỉ lệ sống đổi thế nào so với tuyến tự do.</li>
     </ol></details>
-    <details><summary>Cách tính</summary><p class="sub">Trang thử mọi tổ hợp cụm loot (tối đa số cụm bạn chọn, cộng phòng bạn có thẻ) theo mọi thứ tự, rồi chọn phương án có EV cao nhất. EV = p sống × loot − (1 − p sống) × (kit + 70% loot đang mang) − phí rút − phút × chi phí thời gian. Luật điểm rút theo hướng dẫn chính thức Garena VN (22/10/2025): điểm ngẫu nhiên C, D chỉ có ở Dễ. Điểm trả phí tốn 10.000 hợp kim ở Dễ, 40.000 ở Thường, trả bằng hợp kim kiếm trong trận qua hợp đồng. Ở chế độ "Làm hợp đồng", trang đếm các trạm nhiệm vụ trong 65 m quanh spawn và các cụm trên tuyến, mỗi hợp đồng giả định mất 1,5 phút. Phí vẫn bị trừ vào EV vì nếu không trả, số hợp kim đó là tiền lãi của bạn. p chết ở mỗi cụm = bậc rủi ro của cụm + thời gian đi đường + áp lực địch + đợt lao Admin. Đợt lao Admin: mọi đội một hiệu không phải bạn đều lao thẳng vào Toà Tây, Toà Đông và bãi container ngay đầu trận, mạnh nhất từ phút 0,5 đến 5, nhạt dần tới phút 9. Vì vậy vào Admin muộn an toàn hơn vào sớm. Áp lực địch = tổng xác suất có đội địch ở từng spawn nhân với độ gần theo đường đi (thang 140 m, khoảng 35 giây chạy), giảm dần theo phút vì địch đã di chuyển. Luật spawn: 14 điểm, mỗi bên 3 đội. Mỗi bên có một cặp "một hiệu" (Tây: W4/W5, Đông: E1/E4) luôn có đúng 1 đội ở một trong hai điểm, không bao giờ cả hai. 2 đội còn lại của mỗi bên chia ngẫu nhiên 5 điểm còn lại. Biết vị trí của bạn thì xác suất các điểm khác được tính lại theo đó. Giá trị cụm tính từ số két, server, máy tính, vali, hòm súng, hầm giấu đồ trong dữ liệu map chính thức, trộn với các điểm đồ đỏ theo guide. Khoảng cách tính theo đường vẽ tay trên ảnh, tốc độ ~4 m/s, thang 0,4 m mỗi pixel theo dữ liệu map chính thức, nên thời gian là ước lượng.</p></details>
+    <details><summary>Cách tính</summary><p class="sub">Trang thử mọi tổ hợp cụm loot (tối đa số cụm bạn chọn, cộng phòng bạn có thẻ) theo mọi thứ tự, rồi chọn phương án có EV cao nhất. EV = p sống × loot − (1 − p sống) × (kit + 70% loot đang mang) − phí rút − phút × chi phí thời gian. Luật điểm rút theo hướng dẫn chính thức Garena VN (22/10/2025) và GameWith (27/10/2026): mỗi điểm rút chỉ dành cho một bên spawn. Spawn Tây dùng B, F (dưới 30 kg ở Thường) và C (chỉ Dễ). Spawn Đông dùng A, E (bỏ ba lô) và D (chỉ Dễ). G và H cả hai bên. Rút bỏ ba lô giả định giữ 60% giá trị loot. Điểm trả phí tốn 10.000 hợp kim ở Dễ, 40.000 ở Thường, trả bằng hợp kim kiếm trong trận qua hợp đồng. Ở chế độ "Làm hợp đồng", trang đếm các trạm nhiệm vụ trong 65 m quanh spawn và các cụm trên tuyến, mỗi hợp đồng giả định mất 1,5 phút. Phí vẫn bị trừ vào EV vì nếu không trả, số hợp kim đó là tiền lãi của bạn. p chết ở mỗi cụm = bậc rủi ro của cụm + thời gian đi đường + áp lực địch + đợt lao Admin. Đợt lao Admin: mọi đội một hiệu không phải bạn đều lao thẳng vào Toà Tây, Toà Đông và bãi container ngay đầu trận, mạnh nhất từ phút 0,5 đến 5, nhạt dần tới phút 9. Vì vậy vào Admin muộn an toàn hơn vào sớm. Áp lực địch = tổng xác suất có đội địch ở từng spawn nhân với độ gần theo đường đi (thang 140 m, khoảng 35 giây chạy), giảm dần theo phút vì địch đã di chuyển. Luật spawn: 14 điểm, mỗi bên 3 đội. Mỗi bên có một cặp "một hiệu" (Tây: W4/W5, Đông: E1/E4) luôn có đúng 1 đội ở một trong hai điểm, không bao giờ cả hai. 2 đội còn lại của mỗi bên chia ngẫu nhiên 5 điểm còn lại. Biết vị trí của bạn thì xác suất các điểm khác được tính lại theo đó. Giá trị cụm tính từ số két, server, máy tính, vali, hòm súng, hầm giấu đồ trong dữ liệu map chính thức, trộn với các điểm đồ đỏ theo guide. Khoảng cách tính theo đường vẽ tay trên ảnh, tốc độ ~4 m/s, thang 0,4 m mỗi pixel theo dữ liệu map chính thức, nên thời gian là ước lượng.</p></details>
     <h2>Lớp hiển thị</h2>
     <div class="layers">
       <label><input type="checkbox" data-layer="spawn" id="ly-spawn" checked> Spawn</label>
@@ -205,9 +206,9 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
   </aside>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="data.js?v=f7857d9c4d"></script>
-<script src="paths.js?v=be9281443d"></script>
+<script src="data.js?v=47f46b91b5"></script>
+<script src="paths.js?v=815699dab3"></script>
 <script src="poi.js?v=b297861e7e"></script>
-<script src="app.js?v=8f883d3e8f"></script>
+<script src="app.js?v=ee1e7c06ba"></script>
 </body>
 </html>
