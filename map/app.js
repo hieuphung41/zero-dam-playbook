@@ -54,7 +54,7 @@
   map.on('zoomend', setLabelVisibility);
 
   /* ---------- state ---------- */
-  const state = {mode:'normal', spawn:null, keys:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14};
+  const state = {mode:'normal', spawn:null, keys:new Set(), forced:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14};
 
   /* ---------- graph: precomputed raster shortest paths (paths.js) ---------- */
   const nodes = {}; ZD.nodes.forEach(n => nodes[n.id] = n);
@@ -102,8 +102,9 @@
     const probs = spawnProbs(state.spawn);
     const pressure = {}; ZD.nodes.filter(n=>n.type==='poi').forEach(n=>pressure[n.id]=pressureOf(probs,n.id));
     const pd = r => prof.pDeath[r];
-    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, pd(n.risk) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12));
-    const wanted = [...new Set([...state.keys].map(k => ZD.keycards[k].node))];
+    const timing = (n, t) => n.risk>=3 ? (t<1.5 ? 0.6 : t<3 ? 0.8 : t<8 ? 1.0 : 0.8) : 1; // contested zones: cheaper if you are first in, worst at 3–8 min
+    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, pd(n.risk)*timing(n,tAtArrival) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12));
+    const wanted = [...new Set([...state.keys].map(k => ZD.keycards[k].node).concat([...state.forced]))];
     const roomValue = id => [...state.keys].filter(k=>ZD.keycards[k].node===id).reduce((a,k)=>a+ZD.keycards[k].ev,0);
     const valOf = n => ((mode==='easy' ? n.valueEasy : n.valueNormal) || 0) + (wanted.includes(n.id) ? roomValue(n.id) : 0);
     const extracts = ZD.nodes.filter(n=>n.type==='extract');
@@ -155,7 +156,7 @@
         label(m, n.letter+' · '+n.name, 'lbl-ex');
       } else if(n.type==='poi'){
         const m = L.marker(toLL(n.p), {icon: icons.poi(), zIndexOffset:100}).addTo(layers.poi);
-        m.bindPopup(`<b>${n.name}</b><br>${n.loot}<br><span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> · ~${fmt(Math.round(n.valueNormal/1000))}k Normal / ${fmt(Math.round(n.valueEasy/1000))}k Easy`);
+        m.bindPopup(()=>`<b>${n.name}</b><br>${n.loot}<br><span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> · ~${fmt(Math.round(n.valueNormal/1000))}k Normal / ${fmt(Math.round(n.valueEasy/1000))}k Easy<br><button class="pick-poi" data-id="${n.id}">${state.forced.has(n.id)?'Bỏ ép ghé cụm này':'Ép ghé cụm này'}</button>`);
         label(m, n.name, 'lbl-po');
       } else if(n.type==='boss'){
         const m = L.marker(toLL(n.p), {icon: icons.boss(), zIndexOffset:350}).addTo(layers.poi);
@@ -181,6 +182,7 @@
       m.bindTooltip(ms.n + (ms.hv ? ' (thưởng lớn)' : '') + ' — nhận nhiệm vụ trong trận, trả Alloy khi hoàn thành', {direction:'top'}); });
     map.on('popupopen', e=>{ const el=e.popup.getElement(); if(!el) return;
       el.querySelectorAll('.pick').forEach(b=>b.addEventListener('click', ()=>{ state.spawn=b.dataset.id; spawnSel.value=b.dataset.id; map.closePopup(); render(); }));
+      el.querySelectorAll('.pick-poi').forEach(b=>b.addEventListener('click', ()=>{ const id=b.dataset.id; state.forced.has(id)?state.forced.delete(id):state.forced.add(id); map.closePopup(); render(); }));
       el.querySelectorAll('.pick-key').forEach(b=>b.addEventListener('click', ()=>{ const cb=document.getElementById('key-'+b.dataset.id); if(cb && !cb.checked){ cb.checked=true; state.keys.add(b.dataset.id); } map.closePopup(); render(); })); });
     setLabelVisibility();
   }
@@ -213,10 +215,12 @@
       <div><span class="lbl">Quãng đường</span><b>~${fmt(Math.round(r.dist/10)*10)} m</b></div>
       <div><span class="lbl">Sống sót</span><b>${pct(r.pSurv)}</b></div>
       <div><span class="lbl">EV mỗi trận</span><b>${r.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(r.ev)/1000))}k</b></div></div>`;
+    if(state.forced.size){ const free = (()=>{ const f=new Set(state.forced); state.forced=new Set(); const x=plan(); state.forced=f; return x; })();
+      html += `<div class="forced">Ép ghé: ${[...state.forced].map(id=>`<span class="chip">${nodes[id].name} <button type="button" class="unforce" data-id="${id}" aria-label="bỏ">×</button></span>`).join(' ')}<br><span class="sub">So với tuyến tự do (${free.stops.map(id=>nodes[id].name.split(' (')[0]).join(' → ')||'không loot'}): EV ${free.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(free.ev)/1000))}k, sống ${pct(free.pSurv)} → tuyến ép: EV ${r.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(r.ev)/1000))}k, sống ${pct(r.pSurv)}.</span></div>`; }
     html += '<ol class="steps">';
     r.legs.forEach(l=>{ const n=nodes[l.id]; const keys=[...state.keys].filter(kk=>ZD.keycards[kk].node===l.id);
       const near = POI.missions.filter(ms=>Math.hypot((ms.p[0]-n.p[0])*ZD.image.metersX,(ms.p[1]-n.p[1])*ZD.image.metersY) < 120).length;
-      html += `<li><b>${n.name}</b> <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 120 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
+      html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 120 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
     if(r.extract && r.extract.ok){ const e=r.extract.n; html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b><br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span></li>`; }
     else html += `<li class="exit"><b>Không có điểm rút phù hợp</b> với điều kiện đã chọn.</li>`;
     html += '</ol>';
@@ -229,6 +233,7 @@
     warn.push('Cất đồ đỏ/vàng/thẻ vào Hộp An Toàn ngay khi nhặt. Ngừng loot khi còn 3 phút.');
     html += '<ul class="warn">' + warn.map(w=>`<li>${w}</li>`).join('') + '</ul>';
     out.innerHTML = html;
+    out.querySelectorAll('.unforce').forEach(b=>b.addEventListener('click', ()=>{ state.forced.delete(b.dataset.id); render(); }));
     // options table: 1 / 2 / 3 clusters
     const rows = [1,2,3].map(n=>({n, r: plan({stops:n, maxLootMin: n===1?8:(n===2?14:20)})}));
     opt.innerHTML = '<table class="opts"><thead><tr><th>Cụm</th><th>Loot</th><th>Phút</th><th>Sống</th><th>EV</th><th></th></tr></thead><tbody>' + rows.map(({n,r:x})=>
@@ -250,7 +255,7 @@
   document.querySelectorAll('[data-layer]').forEach(cb=>{ const l=layers[cb.dataset.layer]; if(cb.checked && !map.hasLayer(l)) map.addLayer(l); if(!cb.checked && map.hasLayer(l)) map.removeLayer(l);
     cb.addEventListener('change', e=>{ e.target.checked?map.addLayer(l):map.removeLayer(l); }); });
 
-  window.ZDplan = (st)=>{ Object.assign(state, st); if(st.keys) state.keys=new Set(st.keys); return plan(); };
+  window.ZDplan = (st)=>{ Object.assign(state, st); if(st.keys) state.keys=new Set(st.keys); if(st.forced) state.forced=new Set(st.forced); return plan(); };
   const lg=$('#legend'); $('#legendBtn').addEventListener('click', ()=>{ lg.hidden=!lg.hidden; });
   drawStatic(); render();
 })();
