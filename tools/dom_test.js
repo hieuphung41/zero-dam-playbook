@@ -6,10 +6,10 @@ let html=fs.readFileSync(path.join(site,'index.html'),'utf8');
 const leaflet=fs.readFileSync(path.join(root,'node_modules/leaflet/dist/leaflet.js'),'utf8');
 const inline=f=>()=>'<script>'+fs.readFileSync(path.join(site,f),'utf8')+'</script>';
 html=html.replace(/<script src="https:\/\/cdnjs[^"]*leaflet[^"]*"><\/script>/,()=>'<script>'+leaflet+'</script>')
-         .replace('<script src="data.js"></script>',inline('data.js'))
-         .replace('<script src="paths.js"></script>',inline('paths.js'))
-         .replace('<script src="poi.js"></script>',inline('poi.js'))
-         .replace('<script src="app.js"></script>',inline('app.js'))
+         .replace(/<script src="data\.js(\?v=[0-9a-f]+)?"><\/script>/,inline('data.js'))
+         .replace(/<script src="paths\.js(\?v=[0-9a-f]+)?"><\/script>/,inline('paths.js'))
+         .replace(/<script src="poi\.js(\?v=[0-9a-f]+)?"><\/script>/,inline('poi.js'))
+         .replace(/<script src="app\.js(\?v=[0-9a-f]+)?"><\/script>/,inline('app.js'))
          .replace(/<link rel="stylesheet"[^>]*>/g,'');
 const errors=[];
 const dom=new JSDOM(html,{runScripts:'dangerously', pretendToBeVisual:true, beforeParse(w){ w.addEventListener('error',e=>errors.push(e.message)); 

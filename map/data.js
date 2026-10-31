@@ -87,7 +87,7 @@
   };
 
   window.ZD = {
-    image:{src:'zero-dam.jpg', width:2400, height:2100, metersX:950, metersY:832,
+    image:{src:'zero-dam.jpg?v=3fcdb2c412', width:2400, height:2100, metersX:950, metersY:832,
       credit:'Nền: deltaforcedb.com (bố cục trước S9, sông phía Nam hẹp hơn thực tế) © Tencent / Team Jade. Marker: công cụ map chính thức df.qq.com (9/2026). Giá trị loot: ước lượng.'},
     profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, rush:0.08, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, rush:0.13, minuteCost:10000, maxLootMin:14}},
     /* spawn rule (community guide image, 2026-01-19, matches the 14 official spawn markers): each side has 3 squads —
