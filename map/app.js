@@ -55,21 +55,17 @@
   /* ---------- state ---------- */
   const state = {mode:'normal', spawn:null, keys:new Set(), stops:2, weightLimit:false};
 
-  /* ---------- graph ---------- */
+  /* ---------- graph: precomputed raster shortest paths (paths.js) ---------- */
   const nodes = {}; ZD.nodes.forEach(n => nodes[n.id] = n);
-  const adj = {};
-  const dist = (a,b) => { const A=nodes[a], B=nodes[b]; const dx=(A.p[0]-B.p[0])*ZD.image.metersX, dy=(A.p[1]-B.p[1])*ZD.image.metersY; return Math.hypot(dx,dy); };
-  ZD.edges.forEach(([a,b,riskMul]) => { (adj[a]=adj[a]||[]).push([b, dist(a,b)*(riskMul||1)]); (adj[b]=adj[b]||[]).push([a, dist(a,b)*(riskMul||1)]); });
-  function dijkstra(src){
-    const d={}, prev={}; Object.keys(nodes).forEach(k=>d[k]=Infinity); d[src]=0;
-    const q=new Set(Object.keys(nodes));
-    while(q.size){ let u=null; q.forEach(k=>{ if(u===null||d[k]<d[u]) u=k; }); q.delete(u); if(d[u]===Infinity) break;
-      (adj[u]||[]).forEach(([v,w])=>{ if(d[u]+w<d[v]){ d[v]=d[u]+w; prev[v]=u; } }); }
-    return {d, prev};
-  }
-  const pathOf = (prev, src, dst) => { const p=[dst]; let c=dst; while(c!==src && prev[c]!==undefined){ c=prev[c]; p.push(c);} return p.reverse(); };
+  const PATHS = window.ZDPATHS || {};
+  const pair = (a,b) => PATHS[a+'|'+b] || PATHS[b+'|'+a];
+  const wdist = (a,b) => a===b ? 0 : (pair(a,b) ? pair(a,b).w : Infinity);   // risk-weighted metres (for choosing)
+  const mdist = (a,b) => a===b ? 0 : (pair(a,b) ? pair(a,b).m : Infinity);   // metres (for time)
+  const geom = (a,b) => { const p = pair(a,b); if(!p) return [nodes[a].p, nodes[b].p].map(q=>[q[0]*W, q[1]*H]);
+    const pts = p.pts.map(q=>[q[0]*W/ZD.image.width, q[1]*H/ZD.image.height]); return PATHS[a+'|'+b] ? pts : pts.slice().reverse(); };
   const SPEED = 4.2; // m/s average sprint-walk mix
   const mins = m => m/SPEED/60;
+  const routeLatLngs = ids => { let out=[]; for(let i=1;i<ids.length;i++){ const g = geom(ids[i-1], ids[i]).map(q=>[(1-q[1]/H)*H, q[0]]); out = out.concat(i===1 ? g : g.slice(1)); } return out; };
 
   /* ---------- planner ----------
      Expected-value model for a budget solo run:
@@ -85,48 +81,44 @@
     const roomValue = id => [...state.keys].filter(k=>ZD.keycards[k].node===id).reduce((a,k)=>a+ZD.keycards[k].ev,0);
     const stops = state.stops + wanted.size;
     for(let i=0;i<stops;i++){
-      const dj = dijkstra(cur), d = dj.d;
       let best=null, bestScore=-Infinity;
       const pendingForced = [...wanted].some(id=>!used.has(id));
       ZD.nodes.filter(n=>n.type==='poi' && !used.has(n.id)).forEach(n=>{
-        if(d[n.id]===Infinity) return;
-        const travel = mins(d[n.id]);
+        if(wdist(cur,n.id)===Infinity) return;
+        const travel = mins(mdist(cur,n.id)), wtravel = mins(wdist(cur,n.id));
         const v = ((mode==='easy' ? n.valueEasy : n.valueNormal) || 0) + (wanted.has(n.id) ? roomValue(n.id) : 0);
         if(v<=0) return;
         const p = Math.min(0.9, pd(n.risk) + prof.pTravel*travel);
-        let score = v*(1-p) - p*(prof.kit + 0.7*carried) - (travel + n.lootMin)*prof.minuteCost;
+        let score = v*(1-p) - p*(prof.kit + 0.7*carried) - (wtravel + n.lootMin)*prof.minuteCost;
         if(wanted.has(n.id)) score += 50000; // a room you hold a card for is worth a small detour
         if(score>bestScore){ best=n; bestScore=score; }
       });
       if(!best) break;
       if(!wanted.has(best.id) && bestScore < 0) { if(!pendingForced) break; }
-      route = route.concat(pathOf(dj.prev, cur, best.id).slice(1));
-      tMin += mins(d[best.id]) + best.lootMin;
+      route.push(best.id);
+      tMin += mins(mdist(cur,best.id)) + best.lootMin;
       carried += ((mode==='easy'?best.valueEasy:best.valueNormal)||0) + (wanted.has(best.id) ? roomValue(best.id) : 0);
       used.add(best.id); cur = best.id;
       if(tMin > prof.maxLootMin && ![...wanted].some(id=>!used.has(id))) break;
     }
     // any card room still missing goes in last
     [...wanted].filter(id=>!used.has(id)).forEach(id=>{
-      const dj = dijkstra(cur); if(dj.d[id]===Infinity) return;
-      route = route.concat(pathOf(dj.prev, cur, id).slice(1)); tMin += mins(dj.d[id]) + nodes[id].lootMin;
+      if(wdist(cur,id)===Infinity) return;
+      route.push(id); tMin += mins(mdist(cur,id)) + nodes[id].lootMin;
       carried += ((mode==='easy'?nodes[id].valueEasy:nodes[id].valueNormal)||0) + roomValue(id); used.add(id); cur=id; });
     // reorder the chosen stops to minimise walking (all permutations; at most 5 stops)
-    const memo = {}; const D = id => memo[id] || (memo[id] = dijkstra(id));
     const stopList = [...used];
     if(stopList.length > 1){
       const perms = a => a.length<=1 ? [a] : a.flatMap((x,i)=>perms(a.slice(0,i).concat(a.slice(i+1))).map(r=>[x].concat(r)));
+      const usable = ZD.nodes.filter(n=>n.type==='extract' && n.cond!=='lever' && n.cond!=='drop' && (!n.forSide||n.forSide===side));
       let bestP=null, bestLen=Infinity;
-      perms(stopList).forEach(pm=>{ let len=0, c=state.spawn; pm.forEach(id=>{ len+=D(c).d[id]; c=id; });
-        // add distance to the nearest usable extract so the order ends near an exit
-        const exD = Math.min(...ZD.nodes.filter(n=>n.type==='extract' && n.cond!=='lever' && n.cond!=='drop' && (!n.forSide||n.forSide===side)).map(n=>D(c).d[n.id]));
-        len += exD; if(len<bestLen){ bestLen=len; bestP=pm; } });
+      perms(stopList).forEach(pm=>{ let len=0, c=state.spawn; pm.forEach(id=>{ len+=wdist(c,id); c=id; });
+        len += Math.min(...usable.map(n=>wdist(c,n.id))); if(len<bestLen){ bestLen=len; bestP=pm; } });
       route=[state.spawn]; let c=state.spawn; tMin=0;
-      bestP.forEach(id=>{ route=route.concat(pathOf(D(c).prev, c, id).slice(1)); tMin += mins(D(c).d[id]) + nodes[id].lootMin; c=id; });
+      bestP.forEach(id=>{ route.push(id); tMin += mins(mdist(c,id)) + nodes[id].lootMin; c=id; });
       cur=c; used.clear(); bestP.forEach(id=>used.add(id));
     }
     // extract: score = −pDeath × (kit + 70% carried) − travel × minuteCost − fee
-    const dj2 = dijkstra(cur), d = dj2.d, prev = dj2.prev;
     const cands = ZD.nodes.filter(n=>n.type==='extract').map(n=>{
       let ok = true, why=[];
       if(n.forSide && n.forSide!==side) { ok=false; why.push('dành cho spawn bên '+(n.forSide==='W'?'Tây':'Đông')); }
@@ -134,15 +126,15 @@
       if(n.cond==='random' && mode!=='easy') { why.push('ngẫu nhiên, chỉ chắc ở Easy'); }
       if(n.cond==='drop') { ok=false; why.push('phải bỏ ba lô: chỉ khi bị kẹp và đồ ngon đã trong Safe Box'); }
       if(n.cond==='lever') { ok=false; why.push('kéo cần báo động toàn map'); }
-      if(d[n.id]===Infinity) ok=false;
+      if(wdist(cur,n.id)===Infinity) ok=false;
       const fee = n.cond==='paid' ? (mode==='easy'?10000:40000) : 0;
-      const t = mins(d[n.id]);
-      const p = Math.min(0.9, pd(n.risk) * (n.cond==='fixed' ? 1.3 : 1) + prof.pTravel*t);
-      const score = ok ? -(p*(prof.kit + 0.7*carried)) - t*prof.minuteCost - fee - (n.cond==='random' && mode!=='easy' ? 60000 : 0) : -Infinity;
+      const t = mins(mdist(cur,n.id)), wt = mins(wdist(cur,n.id));
+      const p = Math.min(0.9, pd(n.risk) * (n.cond==="fixed" ? 1.3 : 1) + prof.pTravel*t);
+      const score = ok ? -(p*(prof.kit + 0.7*carried)) - wt*prof.minuteCost - fee - (n.cond==='random' && mode!=='easy' ? 60000 : 0) : -Infinity;
       return {n, ok, why, fee, t, score};
     }).sort((a,b)=>b.score-a.score);
     const ex = cands[0];
-    const path = ex && ex.ok ? route.concat(pathOf(prev, cur, ex.n.id).slice(1)) : route;
+    const path = ex && ex.ok ? route.concat([ex.n.id]) : route;
     return {route:path, stops:[...used], extract:ex, alternatives:cands.slice(1,4), tMin: tMin + (ex?ex.t:0), value:carried, side};
   }
 
@@ -151,7 +143,6 @@
     ZD.nodes.forEach(n=>{
       if(n.type==='spawn'){
         const m = L.marker(toLL(n.p), {icon: icons.spawn(n,false), zIndexOffset:300}).addTo(layers.spawn);
-        m.bindPopup(`<b>${n.name}</b><br>Bên ${n.side==='W'?'Tây':'Đông'}${n.guaranteed?'<br>Luôn có 1 đội, cách Admin ~30 s':''}${n.nearAdmin?'<br>Gần Admin, trận đầu dễ nổ ở đây':''}<br><button class="pick" data-id="${n.id}">Chọn spawn này</button>`);
         label(m, n.name.split(' ')[0], 'lbl-sp');
         m.on('click', ()=>{ state.spawn=n.id; spawnSel.value=n.id; render(); });
       } else if(n.type==='extract'){
@@ -185,7 +176,7 @@
         const out = $('#out');
     if(!state.spawn){ out.innerHTML = '<p class="hint">Bấm một chấm xanh (điểm spawn) trên map, hoặc chọn trong danh sách.</p>'; return; }
     const r = plan();
-    const ll = r.route.map(id=>toLL(nodes[id].p));
+    const ll = routeLatLngs(r.route);
     L.polyline(ll, {color:'#ff6a00', weight:4, opacity:.95}).addTo(layers.route);
     let k=1; r.stops.forEach(id=>{ L.marker(toLL(nodes[id].p), {icon: icons.step(k++), zIndexOffset:600}).addTo(layers.route); });
     L.marker(toLL(nodes[state.spawn].p), {icon: icons.spawn(nodes[state.spawn],true), zIndexOffset:700}).addTo(layers.route);
