@@ -8,3 +8,7 @@
 Regenerate paths after editing roads or nodes:
 
     node tools/pathfind.js <dir with node_modules> map tools/cost.json tools/roads.json map/paths.js
+
+- `e2e_browser.js` — real Chromium session (Playwright): clicks all 14 spawns on fresh pages with an occlusion check, legend toggle, keycards, option table, forced cluster, layer toggles; desktop + phone; screenshots.
+
+    node tools/e2e_browser.js <dir with node_modules incl. playwright> <screenshot dir> <url>

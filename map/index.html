@@ -23,6 +23,7 @@
   --accent:#5fc3a8; --accent-soft:#1c312b; --gold:#e0b04a; --gold-soft:#3a3016; --red:#ef7f72; --red-soft:#3d2320;
   --blue:#7fb0e0; --blue-soft:#1d2b3a; --route:#ff8a3d; --poi:#c08ae0; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;display:grid;grid-template-rows:auto 1fr;}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem;padding:.6rem max(16px,env(safe-area-inset-right,0px)) .6rem max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--surface)}
@@ -75,8 +76,8 @@ ul.warn{border-left:3px solid var(--gold);padding:.3rem .8rem;margin:.8rem 0;lis
 .mi.st circle{fill:#ff6a00;stroke:#fff;stroke-width:2}.mi.st text{font:700 15px var(--display);fill:#1c1c1c}
 .mi{transition:transform .12s;transform-origin:center}.mkw:hover .mi{transform:scale(1.25)}
 /* labels */
-.lbl{background:rgba(20,24,22,.82);color:#fff;border:0;border-radius:3px;padding:1px 6px;font:600 11px var(--display);letter-spacing:.03em;box-shadow:none;white-space:nowrap}
-.lbl::before{display:none}
+.mlbl{background:rgba(20,24,22,.82);color:#fff;border:0;border-radius:3px;padding:1px 6px;font:600 11px var(--display);letter-spacing:.03em;box-shadow:none;white-space:nowrap}
+.mlbl::before{display:none}
 .lbl-ex{background:rgba(20,110,70,.9)}.lbl-ky{background:rgba(120,85,10,.9)}.lbl-bs{background:rgba(160,30,30,.9)}.lbl-po{background:rgba(90,40,120,.85)}
 .z-low .lbl-sp,.z-low .lbl-ky,.z-low .lbl-po,.z-mid .lbl-ky{display:none}
 .z-low .mkw.z-ky,.z-low .mkw.z-po{opacity:.75}
@@ -101,9 +102,14 @@ ol.sub{color:var(--muted);font-size:.88rem;padding-left:1.2rem}
 .forced{background:var(--gold-soft);border-left:3px solid var(--gold);padding:.4rem .6rem;margin:.4rem 0;font-size:.9rem}
 .forced .chip,.steps .chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:.05em .4em;font:600 .78rem var(--display)}
 .forced .unforce{border:0;background:none;color:var(--red);font-weight:700;cursor:pointer;padding:0 .1em}
+#keysBox>summary{cursor:pointer;list-style:none;margin:1.1rem 0 .4rem}
+#keysBox>summary::-webkit-details-marker{display:none}
+#keysBox>summary::before{content:"▸ ";color:var(--accent)}
+#keysBox[open]>summary::before{content:"▾ "}
+h2.inl{display:inline;margin:0}
 /* legend + popups */
-#legendBtn{position:absolute;left:10px;bottom:28px;z-index:900;font:600 12px var(--display);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:.35rem .6rem;cursor:pointer}
-#legend{position:absolute;left:10px;bottom:62px;z-index:900;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.5rem .7rem;font-size:.8rem;display:grid;gap:.25rem;max-width:230px}
+#legendBtn{position:absolute;right:calc(10px + env(safe-area-inset-right, 0px));top:10px;z-index:900;font:600 12px var(--display);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:.35rem .6rem;cursor:pointer}
+#legend{position:absolute;right:calc(10px + env(safe-area-inset-right, 0px));top:44px;max-height:calc(100% - 80px);overflow:auto;z-index:900;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.5rem .7rem;font-size:.8rem;display:grid;gap:.25rem;max-width:230px}
 #legend div{display:flex;align-items:center;gap:.5rem}#legend .mi{width:20px;height:20px;flex:none}
 .leaflet-popup-content{font:14px var(--body);color:#1c2220;margin:10px 12px;line-height:1.45}
 .leaflet-popup-content button{margin-top:.4rem;font:600 12px var(--display);background:#1f6b5c;color:#fff;border:0;border-radius:3px;padding:.3rem .6rem;cursor:pointer}
@@ -111,7 +117,9 @@ ol.sub{color:var(--muted);font-size:.88rem;padding-left:1.2rem}
 .leaflet-popup-content .r0,.leaflet-popup-content .r1{background:#dfeee9;color:#1f6b5c}.leaflet-popup-content .r2{background:#f6ecd2;color:#a7781a}.leaflet-popup-content .r3,.leaflet-popup-content .r4{background:#f7e1dd;color:#b23a2f}
 .leaflet-container{font-family:var(--body)}
 .leaflet-tooltip{font-size:.85rem}
-.leaflet-control-attribution{font-size:.7rem}
+/* map labels sit under markers so they never hide a step number or block a click */
+.leaflet-tooltip-pane{z-index:590}
+.leaflet-control-attribution{font-size:.7rem;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -147,8 +155,8 @@ a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(-
     </fieldset>
     <h2>2 · Điểm spawn</h2>
     <select id="spawnSel"><option value="">— bấm trên map hoặc chọn —</option></select>
-    <h2>3 · Thẻ mang theo</h2>
-    <div id="keys"></div>
+    <details id="keysBox" open><summary><h2 class="inl">3 · Thẻ mang theo <span id="keysCount" class="sub"></span></h2></summary>
+    <div id="keys"></div></details>
     <h2>4 · Mục tiêu</h2>
     <fieldset>
       <label><input type="radio" name="goal" value="1" id="goal-1"> Nhanh gọn (1 cụm, ≤ 8 ph)</label>

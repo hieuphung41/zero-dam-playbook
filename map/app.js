@@ -7,11 +7,12 @@
 
   /* ---------- map ---------- */
   const W = ZD.image.width, H = ZD.image.height;
-  const map = L.map('map', {crs: L.CRS.Simple, minZoom: -3, maxZoom: 3, zoomSnap: 0.25, attributionControl: true});
+  const map = L.map('map', {crs: L.CRS.Simple, minZoom: -3, maxZoom: 1, zoomSnap: 0.25, attributionControl: true});
   const bounds = [[0,0],[H,W]];
   L.imageOverlay(ZD.image.src, bounds).addTo(map);
   map.fitBounds(bounds);
-  map.attributionControl.setPrefix('').addAttribution(ZD.image.credit);
+  map.attributionControl.setPrefix('').addAttribution('© Tencent / Team Jade · ảnh deltaforcedb · marker df.qq.com');
+  { const c = document.getElementById('credit'); if(c) c.textContent = ZD.image.credit; }
   const toLL = p => [ (1-p[1])*H, p[0]*W ];
 
   const layers = {heat: L.layerGroup().addTo(map), spawn: L.layerGroup().addTo(map), extract: L.layerGroup().addTo(map), key: L.layerGroup().addTo(map),
@@ -42,14 +43,14 @@
   const icon = (html, size, cls) => L.divIcon({className:'mkw '+(cls||''), html, iconSize:[size,size], iconAnchor:[size/2,size/2]});
   const EXT = {fixed:['hex','exit','ex-fixed'], random:['hex','dice','ex-random',true], paid:['hex','coin','ex-paid'], weight:['hex','weight','ex-cond'], drop:['hex','bag','ex-cond'], lever:['hex','lift','ex-lever']};
   const icons = {
-    spawn:(n,sel)=> icon(mkSvg('circle','person','sp'+(n.pair?' sp-g':'')+(sel?' sel':''), n.name.split(' ')[0]), sel?36:26, 'z-sp'),
-    extract:(n,sel)=> { const e=EXT[n.cond]||EXT.fixed; return icon(mkSvg(e[0],e[1],e[2]+(sel?' sel':''), n.letter, e[3]), sel?40:32, 'z-ex'); },
-    key:()=> icon(mkSvg('square','key','ky'), 24, 'z-ky'),
-    poi:()=> icon(mkSvg('diamond','crate','po'), 22, 'z-po'),
+    spawn:(n,sel)=> icon(`<div class="mkh" data-id="${n.id}">`+mkSvg('circle','person','sp'+(n.pair?' sp-g':'')+(sel?' sel':''), n.name.split(' ')[0])+'</div>', sel?36:26, 'z-sp'),
+    extract:(n,sel)=> { const e=EXT[n.cond]||EXT.fixed; return icon(`<div class="mkh" data-id="${n.id}">`+mkSvg(e[0],e[1],e[2]+(sel?' sel':''), n.letter, e[3])+'</div>', sel?40:32, 'z-ex'); },
+    key:(id)=> icon(`<div class="mkh" data-id="key-${id}">`+mkSvg('square','key','ky')+'</div>', 24, 'z-ky'),
+    poi:(id)=> icon(`<div class="mkh" data-id="${id}">`+mkSvg('diamond','crate','po')+'</div>', 22, 'z-po'),
     boss:()=> icon(mkSvg('shield','skull','bs'), 30, 'z-bs'),
     step:(k)=> icon(`<svg class="mi st" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><text x="16" y="21" text-anchor="middle">${k}</text></svg>`, 30, 'z-st')
   };
-  const label = (m, text, cls) => m.bindTooltip(text, {permanent:true, direction:'right', offset:[12,0], className:'lbl '+(cls||'')});
+  const label = (m, text, cls) => m.bindTooltip(text, {permanent:true, direction:'right', offset:[12,0], className:'mlbl '+(cls||'')});
   const setLabelVisibility = () => { const z = map.getZoom(); const c = map.getContainer(); c.classList.toggle('z-low', z < -1.5); c.classList.toggle('z-mid', z >= -1.5 && z < -0.5); };
   map.on('zoomend', setLabelVisibility);
 
@@ -153,17 +154,17 @@
   function drawStatic(){
     ZD.nodes.forEach(n=>{
       if(n.type==='spawn'){
-        const m = L.marker(toLL(n.p), {icon: icons.spawn(n,false), zIndexOffset:300}).addTo(layers.spawn);
+        const m = L.marker(toLL(n.p), {icon: icons.spawn(n,false), zIndexOffset:500}).addTo(layers.spawn);
         label(m, n.name.split(' ')[0], 'lbl-sp'); spawnMarkers[n.id] = m;
         m.on('click', ()=>{ state.spawn=n.id; spawnSel.value=n.id; render(); });
       } else if(n.type==='extract'){
         const m = L.marker(toLL(n.p), {icon: icons.extract(n,false), zIndexOffset:400}).addTo(layers.extract);
         m.bindPopup(`<b>${n.letter} · ${n.name}</b><br>${n.desc}${n.forSide?`<br>Dành cho spawn bên ${n.forSide==='W'?'Tây':'Đông'}`:''}`);
-        label(m, n.letter+' · '+n.name, 'lbl-ex');
+        label(m, n.letter+' · '+n.name.split(' (')[0], 'lbl-ex');
       } else if(n.type==='poi'){
-        const m = L.marker(toLL(n.p), {icon: icons.poi(), zIndexOffset:100}).addTo(layers.poi);
+        const m = L.marker(toLL(n.p), {icon: icons.poi(n.id), zIndexOffset:100}).addTo(layers.poi);
         m.bindPopup(()=>`<b>${n.name}</b><br>${n.loot}<br><span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> · ~${fmt(Math.round(n.valueNormal/1000))}k Normal / ${fmt(Math.round(n.valueEasy/1000))}k Easy<br><button class="pick-poi" data-id="${n.id}">${state.forced.has(n.id)?'Bỏ ép ghé cụm này':'Ép ghé cụm này'}</button>`);
-        label(m, n.name, 'lbl-po');
+        label(m, n.name.split(' (')[0].split(' / ')[0], 'lbl-po');
       } else if(n.type==='boss'){
         const m = L.marker(toLL(n.p), {icon: icons.boss(), zIndexOffset:350}).addTo(layers.poi);
         m.bindPopup(`<b>${n.name}</b><br>M249, lựu đạn khói/cháy; guard Flamethrower + Rocketeer tuần tra lòng đập.`);
@@ -172,7 +173,7 @@
     });
     Object.entries(ZD.keycards).forEach(([id,k])=>{
       const n = nodes[k.node]; if(!n) return;
-      const m = L.marker(toLL(k.p || n.p), {icon: icons.key(), zIndexOffset:200}).addTo(layers.key);
+      const m = L.marker(toLL(k.p || n.p), {icon: icons.key(id), zIndexOffset:200}).addTo(layers.key);
       m.bindPopup(`<b>🔑 ${k.name}</b><br>${k.contents}<br>Giá tham khảo ~${fmt(Math.round(k.price/1000))}k · kỳ vọng ~${fmt(Math.round(k.ev/1000))}k<br>${k.tip}<br><button class="pick-key" data-id="${id}">Tôi mang thẻ này</button>`);
       label(m, k.name.split(' (')[0], 'lbl-ky');
     });
@@ -189,7 +190,7 @@
     map.on('popupopen', e=>{ const el=e.popup.getElement(); if(!el) return;
       el.querySelectorAll('.pick').forEach(b=>b.addEventListener('click', ()=>{ state.spawn=b.dataset.id; spawnSel.value=b.dataset.id; map.closePopup(); render(); }));
       el.querySelectorAll('.pick-poi').forEach(b=>b.addEventListener('click', ()=>{ const id=b.dataset.id; state.forced.has(id)?state.forced.delete(id):state.forced.add(id); map.closePopup(); render(); }));
-      el.querySelectorAll('.pick-key').forEach(b=>b.addEventListener('click', ()=>{ const cb=document.getElementById('key-'+b.dataset.id); if(cb && !cb.checked){ cb.checked=true; state.keys.add(b.dataset.id); } map.closePopup(); render(); })); });
+      el.querySelectorAll('.pick-key').forEach(b=>b.addEventListener('click', ()=>{ const cb=document.getElementById('key-'+b.dataset.id); if(cb && !cb.checked){ cb.checked=true; state.keys.add(b.dataset.id); keysCount(); } map.closePopup(); render(); })); });
     setLabelVisibility();
   }
   const RISK = ['rất thấp','thấp','trung bình','cao','rất cao'];
@@ -198,13 +199,13 @@
   function render(){
     layers.route.clearLayers(); layers.heat.clearLayers();
     const out = $('#out'), opt = $('#options');
-    if(!state.spawn){ out.innerHTML = '<p class="hint">Bấm một chấm xanh (điểm spawn) trên map, hoặc chọn trong danh sách.</p>'; opt.innerHTML=''; 
+    if(!state.spawn){ map.fitBounds(bounds); out.innerHTML = '<p class="hint">Bấm một chấm xanh (điểm spawn) trên map, hoặc chọn trong danh sách.</p>'; opt.innerHTML=''; 
       Object.values(spawnMarkers).forEach(m=>m.setTooltipContent(nodes[Object.keys(spawnMarkers).find(k=>spawnMarkers[k]===m)].name.split(' ')[0])); return; }
     const r = plan();
     // enemy spawn probabilities: heat circles + % on labels
     Object.entries(spawnMarkers).forEach(([id,m])=>{ const p = r.probs[id]; const short = nodes[id].name.split(' ')[0];
       m.setTooltipContent(id===state.spawn ? short+' · bạn' : short+' · '+Math.round((p||0)*100)+'%');
-      if(p>0){ L.circle(toLL(nodes[id].p), {radius: 120*PXM, stroke:false, fillColor:'#e53935', fillOpacity:0.07+0.4*p, interactive:false}).addTo(layers.heat); } });
+      if(p>0){ L.circle(toLL(nodes[id].p), {radius: 100*PXM, color:'#e53935', weight:1, opacity:0.55, dashArray:'4 4', fillColor:'#e53935', fillOpacity:0.04+0.16*p, interactive:false}).addTo(layers.heat); } });
     const ll = routeLatLngs(r.route);
     L.polyline(ll, {color:'#1c1c1c', weight:8, opacity:.55}).addTo(layers.route);
     L.polyline(ll, {color:'#ff6a00', weight:4, opacity:.95}).addTo(layers.route);
@@ -237,7 +238,7 @@
       if(S.pair.includes(state.spawn)){ const other=S.pair.find(id=>id!==state.spawn);
         warn.push(`Bạn là đội "một hiệu" bên ${sideVi}: ${short(other)} chắc chắn trống. 2 đội còn lại bên ${sideVi} nằm ở ${S.random.map(short).join(', ')} (40% mỗi điểm).`); }
       else warn.push(`Chắc chắn có đúng 1 đội ở ${S.pair.map(short).join(' hoặc ')} (50/50, không bao giờ cả hai). Đây là cặp "một hiệu" bên ${sideVi}, thường lao thẳng vào Admin.`); });
-    warn.push('Vùng đỏ là bán kính 120 m quanh spawn có thể có địch, càng đậm càng chắc.');
+    warn.push('Vòng đỏ là bán kính 100 m quanh spawn có thể có địch, càng đậm càng chắc.');
     if(sp.pair) warn.push('Spawn này chạy tới Admin chỉ mất khoảng 30–50 giây: đội một hiệu bên kia cũng vậy, đừng đứng loot ở giữa.');
     if(state.keys.size) warn.push('Bán thẻ được trước khi dùng; nhìn qua cửa sổ trước khi mở.');
     warn.push('Cất đồ đỏ/vàng/thẻ vào Hộp An Toàn ngay khi nhặt. Ngừng loot khi còn 3 phút.');
@@ -258,6 +259,9 @@
   const keyBox = $('#keys');
   Object.entries(ZD.keycards).forEach(([id,k])=>{ const l=document.createElement('label'); l.innerHTML=`<input type="checkbox" id="key-${id}" value="${id}"> ${k.name} <span class="sub">~${fmt(Math.round(k.price/1000))}k</span>`; keyBox.appendChild(l);
     l.querySelector('input').addEventListener('change', e=>{ e.target.checked?state.keys.add(id):state.keys.delete(id); render(); }); });
+  const keysCount = () => { const n = state.keys.size; const el = $('#keysCount'); if(el) el.textContent = n ? `(${n} đã chọn)` : ''; };
+  keyBox.addEventListener('change', keysCount);
+  try { if(window.matchMedia('(max-width: 860px)').matches) $('#keysBox').open = false; } catch(e) {}
   document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change', e=>{ state.mode=e.target.value; render(); }));
   document.querySelectorAll('input[name=goal]').forEach(r=>r.addEventListener('change', e=>{ state.stops=+e.target.value; state.maxLootMin = state.stops===1?8:(state.stops===2?14:20); render(); }));
   $('#avoid').addEventListener('input', e=>{ state.avoid=+e.target.value; $('#avoidV').textContent=['tắt','thấp','vừa','cao','rất cao'][Math.round(+e.target.value*2)]; render(); });
