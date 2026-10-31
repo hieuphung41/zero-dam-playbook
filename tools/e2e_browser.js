@@ -47,6 +47,21 @@ const SPAWNS=['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s1
     if(pm){ const vis=await pm.isVisible(); if(vis){ await pm.click({timeout:3000}).catch(()=>{}); await page.waitForTimeout(300); const b=await page.$('.pick-poi'); if(b){ await b.click(); await page.waitForTimeout(400);
       say(`[${vp.name}] forced container: `+(await page.innerText('#out .forced')).replace(/\s+/g,' ')); await page.screenshot({path:`${OUT}/${vp.name}_forced.png`}); } else { say(`[${vp.name}] popup without force button`); problems.push(vp.name+': force popup'); } }
       else say(`[${vp.name}] container marker hidden at route zoom`); }
+    // paid extract modes (clear any forced cluster from the previous step first)
+    for(const b of await page.$$('.unforce')) { await b.click(); await page.waitForTimeout(200); }
+    await page.selectOption('#spawnSel','s8'); await page.waitForTimeout(300);
+    const exitOf = async()=> (await page.$$eval('#out .steps li > b', els=>els.map(e=>e.innerText).join(' > '))).replace(/\s+/g,' ');
+    say(`[${vp.name}] E1 Thường, không đủ hợp kim: ${await exitOf()} | rewardRow hidden=${await page.$eval('#rewardRow',e=>e.hidden)}`);
+    await page.selectOption('#pay','have'); await page.waitForTimeout(300); say(`[${vp.name}] E1 đã có đủ: ${await exitOf()}`);
+    await page.selectOption('#pay','contracts'); await page.waitForTimeout(300);
+    say(`[${vp.name}] E1 làm hợp đồng 10k: ${await exitOf()} | rewardRow hidden=${await page.$eval('#rewardRow',e=>e.hidden)}`);
+    await page.fill('#reward','20000'); await page.press('#reward','Enter'); await page.dispatchEvent('#reward','change'); await page.waitForTimeout(400);
+    const ct = await page.$('#out li.contract'); say(`[${vp.name}] E1 làm hợp đồng 20k: ${await exitOf()} | ${ct? (await ct.innerText()).replace(/\s+/g,' ').slice(0,160) : 'không có mục hợp đồng'}`);
+    const ctMarkers = await page.$$eval('.ms.ct', els=>els.length); say(`[${vp.name}] contract stations drawn on route: ${ctMarkers}`);
+    if(vp.name==='desktop') await page.screenshot({path:`${OUT}/${vp.name}_contracts.png`});
+    await page.check('#mode-easy'); await page.waitForTimeout(400);
+    say(`[${vp.name}] chuyển Dễ: pay=${await page.$eval('#pay',e=>e.value)} exit=${await exitOf()} fallback=${(await page.$('#out li.exit .sub b'))?'có':'không'}`);
+    await page.check('#mode-normal'); await page.waitForTimeout(300); say(`[${vp.name}] về Thường: pay=${await page.$eval('#pay',e=>e.value)}`);
     // layers toggles
     for(const ly of ['ly-heat','ly-box','ly-mission']){ await page.uncheck('#'+ly); await page.waitForTimeout(150); }
     const after=await page.evaluate(()=>({heat:document.querySelectorAll('.leaflet-overlay-pane path').length, box:document.querySelectorAll('.mkw.z-bx').length, ms:document.querySelectorAll('.mkw.z-ms').length}));

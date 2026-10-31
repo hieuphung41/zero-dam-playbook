@@ -25,12 +25,12 @@
   /* extracts (official marker set, 8) */
   add('xA','extract',1069,1703,{letter:'A', name:'Cửa đường phía Tây', cond:'fixed', forSide:'E', risk:3, desc:'Cố định, luôn mở, chờ 10 s. Bị camp 2–3 phút cuối.'});
   add('xB','extract',3160,1937,{letter:'B', name:'Hầm phía Đông', cond:'fixed', forSide:'W', risk:3, desc:'Cố định, luôn mở, chờ 10 s. Bị camp 2–3 phút cuối.'});
-  add('xC','extract',2820,2595,{letter:'C', name:'Cửa đường phía Đông', cond:'random', forSide:'W', risk:1, desc:'Ngẫu nhiên (~50%), nam Trung tâm du khách.'});
-  add('xD','extract',1278,1698,{letter:'D', name:'Lối tắt cạnh đường', cond:'random', forSide:'E', risk:1, desc:'Ngẫu nhiên (~50%), nam Nhà máy xi măng.'});
-  add('xE','extract',1349,778,{letter:'E', name:'Đường bảo trì', cond:'drop', forSide:null, risk:1, desc:'Phải bỏ ba lô. Bắc Doanh trại.'});
-  add('xF','extract',3100,1218,{letter:'F', name:'Đỉnh đập', cond:'weight', forSide:null, risk:2, desc:'Giới hạn cân nặng: dưới 50 kg Easy, dưới 30 kg Normal.'});
-  add('xG','extract',1920,1910,{letter:'G', name:'Bờ sông (trả phí)', cond:'paid', forSide:null, risk:1, desc:'10.000 Alloy Easy / 40.000 Normal, chờ 30 s, tối đa 4 đội.'});
-  add('xH','extract',2535,808,{letter:'H', name:'Thang máy công nghiệp', cond:'lever', forSide:null, risk:4, desc:'Kéo cần ở Toà Tây 2F hoặc Trạm biến áp chính; báo động toàn map; chờ ~3 phút.'});
+  add('xC','extract',2820,2595,{letter:'C', name:'Cửa đường phía Đông', cond:'random', forSide:'W', risk:1, desc:'Chỉ có ở Dễ: bật/tắt ngẫu nhiên, có khói xanh là đang mở. Nam Trung tâm du khách.'});
+  add('xD','extract',1278,1698,{letter:'D', name:'Lối tắt cạnh đường', cond:'random', forSide:'E', risk:1, desc:'Chỉ có ở Dễ: bật/tắt ngẫu nhiên, có khói xanh là đang mở. Nam Nhà máy xi măng.'});
+  add('xE','extract',1349,778,{letter:'E', name:'Đường bảo trì', cond:'drop', forSide:null, risk:1, desc:'Phải bỏ toàn bộ ba lô. Trong hầm nối từ Doanh trại.'});
+  add('xF','extract',3100,1218,{letter:'F', name:'Đỉnh đập', cond:'weight', forSide:null, risk:2, desc:'Tổng cân nặng dưới 50 kg ở Dễ, dưới 30 kg ở Thường. Lên bằng dây zip.'});
+  add('xG','extract',1920,1910,{letter:'G', name:'Bờ sông (trả phí)', cond:'paid', forSide:null, risk:1, desc:'10.000 hợp kim ở Dễ, 40.000 ở Thường. Trả bằng hợp kim kiếm trong trận (làm hợp đồng), không mang tiền vào được. Chờ 30 s, khoá sau 4 lượt.'});
+  add('xH','extract',2535,808,{letter:'H', name:'Thang máy công nghiệp', cond:'lever', forSide:null, risk:4, desc:'Kéo cần ở Toà Tây 2F hoặc Trạm biến áp chính; báo động toàn map; chờ ~4 phút; Thường chỉ kéo được 1 lần.'});
 
   /* boss */
   add('boss','boss',2285,1158,{name:'Saeed (Fiery Owl Guard) — sảnh/cầu thang Toà Đông'});
@@ -94,6 +94,7 @@
        exactly ONE squad in its "#1" pair (one position or the other, never both) and 2 squads among its 5 other spots */
     squads:{W:{pair:['s4','s5'], random:['s1','s2','s3','s6','s7'], randomSquads:2},
             E:{pair:['s8','s11'], random:['s9','s10','s12','s13','s14'], randomSquads:2}},
+    contract:{minutes:1.5, radius:65},  // time per in-raid contract (assumption) and how close a station must be to a stop
     nodes, edges, keycards
   };
 })();

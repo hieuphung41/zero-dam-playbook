@@ -55,7 +55,8 @@
   map.on('zoomend', setLabelVisibility);
 
   /* ---------- state ---------- */
-  const state = {mode:'normal', spawn:null, keys:new Set(), forced:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14};
+  const state = {mode:'normal', spawn:null, keys:new Set(), forced:new Set(), stops:2, weightLimit:false, avoid:1, maxLootMin:14, payMode:'none', contractReward:10000};
+  const PAY_DEFAULT = {easy:'contracts', normal:'none'};
 
   /* ---------- graph: precomputed raster shortest paths (paths.js) ---------- */
   const nodes = {}; ZD.nodes.forEach(n => nodes[n.id] = n);
@@ -115,11 +116,23 @@
     const roomValue = id => [...state.keys].filter(k=>ZD.keycards[k].node===id).reduce((a,k)=>a+ZD.keycards[k].ev,0);
     const valOf = n => ((mode==='easy' ? n.valueEasy : n.valueNormal) || 0) + (wanted.includes(n.id) ? roomValue(n.id) : 0);
     const extracts = ZD.nodes.filter(n=>n.type==='extract');
-    const feeOf = n => n.cond==='paid' ? (mode==='easy'?10000:40000) : 0;
-    const extractOk = n => { const why=[]; let ok=true;
+    const FEE = mode==='easy' ? 10000 : 40000;
+    const feeOf = n => n.cond==='paid' ? FEE : 0;
+    // paid extract is paid with Alloy earned in the raid: count contract stations close to the spawn or a stop
+    const needContracts = Math.ceil(FEE / Math.max(1000, state.contractReward||10000));
+    const stationsNear = ids => { const R = ZD.contract.radius; const out = [];
+      POI.missions.forEach((ms,i)=>{ let bestId=null, bd=Infinity; ids.forEach(id=>{ const q=nodes[id].p; const dd=Math.hypot((ms.p[0]-q[0])*ZD.image.metersX,(ms.p[1]-q[1])*ZD.image.metersY); if(dd<bd){bd=dd;bestId=id;} });
+        if(bd<=R) out.push({i, near:bestId, hv:ms.hv}); });
+      return out.sort((x,y)=>y.hv-x.hv); };
+    const extractOk = (n, stations) => { const why=[]; let ok=true;
       if(n.forSide && n.forSide!==side) { ok=false; why.push('dành cho spawn bên '+(n.forSide==='W'?'Tây':'Đông')); }
-      if(n.cond==='weight' && !state.weightLimit) { ok=false; why.push('cần dưới '+(mode==='easy'?50:30)+' kg'); }
-      if(n.cond==='random' && mode!=='easy') why.push('ngẫu nhiên, chỉ chắc ở Easy');
+      if(n.cond==='weight' && !state.weightLimit) { ok=false; why.push('cần tổng cân nặng dưới '+(mode==='easy'?50:30)+' kg (tick ô cân nặng nếu bạn giữ được)'); }
+      if(n.cond==='random' && mode!=='easy') { ok=false; why.push('không có ở chế độ Thường'); }
+      if(n.cond==='random' && mode==='easy') why.push('chỉ dùng được khi có khói xanh');
+      if(n.cond==='paid'){
+        if(state.payMode==='none'){ ok=false; why.push(`cần ${fmt(FEE)} hợp kim kiếm trong trận: chọn "Làm hợp đồng" hoặc "Đã có đủ"`); }
+        else if(state.payMode==='contracts' && stations.length < needContracts){ ok=false; why.push(`tuyến chỉ đi gần ${stations.length}/${needContracts} trạm nhiệm vụ cần để đủ ${fmt(FEE)}`); }
+      }
       if(n.cond==='drop') { ok=false; why.push('phải bỏ ba lô: chỉ khi bị kẹp và đồ ngon đã trong Safe Box'); }
       if(n.cond==='lever') { ok=false; why.push('kéo cần báo động toàn map'); }
       return {ok, why}; };
@@ -128,14 +141,17 @@
       let c=state.spawn, tMin=0, carried=0, pSurv=1; const legs=[];
       for(const id of order){ const n=nodes[id]; const m=mdist(c,id); if(m===Infinity) return null; const t=mins(m); const p=pDeathAt(n,t,tMin+t);
         legs.push({id, m, t, lootMin:n.lootMin, p, pressure:pressure[id]||0, rush:rushRisk(n,tMin+t), value:valOf(n), tAt:tMin+t}); tMin += t + n.lootMin; carried += valOf(n); pSurv *= (1-p); c=id; }
-      const cands = extracts.map(n=>{ const {ok,why}=extractOk(n); const m=mdist(c,n.id); const t=mins(m), wt=mins(wdist(c,n.id)); const fee=feeOf(n);
-        const p = Math.min(0.9, pd(n.risk)*(n.cond==='fixed'?1.3:1) + prof.pTravel*t);
-        const score = (ok && m!==Infinity) ? -(p*(prof.kit + 0.7*carried)) - wt*prof.minuteCost - fee - (n.cond==='random' && mode!=='easy' ? 60000 : 0) : -Infinity;
-        return {n, ok: ok && m!==Infinity, why, fee, t, m, p, score}; }).sort((a,b)=>b.score-a.score);
+      const stations = stationsNear([state.spawn].concat(order));
+      const cands = extracts.map(n=>{ const {ok,why}=extractOk(n, stations); const m=mdist(c,n.id); const t=mins(m), wt=mins(wdist(c,n.id)); const fee=feeOf(n);
+        // contracts done for the fee cost time and exposure
+        const useC = n.cond==='paid' && state.payMode==='contracts'; const cMin = useC ? needContracts*ZD.contract.minutes : 0; const cP = prof.pTravel*cMin;
+        const p = Math.min(0.9, pd(n.risk)*(n.cond==='fixed'?1.3:1) + prof.pTravel*t + cP);
+        const score = (ok && m!==Infinity) ? -(p*(prof.kit + 0.7*carried)) - (wt+cMin)*prof.minuteCost - fee : -Infinity;
+        return {n, ok: ok && m!==Infinity, why, fee, t, m, p, score, cMin, contracts: useC ? stations.slice(0,needContracts) : []}; }).sort((a,b)=>b.score-a.score);
       const ex = cands[0]; if(!ex || !ex.ok) return null;
-      const pAll = pSurv*(1-ex.p); const tTot = tMin + ex.t; const dist = legs.reduce((a,l)=>a+l.m,0) + ex.m;
+      const pAll = pSurv*(1-ex.p); const tTot = tMin + ex.t + ex.cMin; const dist = legs.reduce((a,l)=>a+l.m,0) + ex.m;
       const ev = pAll*carried - (1-pAll)*(prof.kit + 0.7*carried) - ex.fee - tTot*prof.minuteCost;
-      return {order, legs, extract:ex, alternatives:cands.slice(1,4), tMin:tTot, value:carried, pSurv:pAll, ev, dist};
+      return {order, legs, extract:ex, alternatives:cands.slice(1,5), allCands:cands, tMin:tTot, value:carried, pSurv:pAll, ev, dist, stations};
     }
     // exhaustive search over stop sets (≤ stopsN clusters + the rooms you hold cards for), every order
     const pois = ZD.nodes.filter(n=>n.type==='poi' && valOf(n)>0 && !wanted.includes(n.id)).map(n=>n.id);
@@ -212,6 +228,9 @@
     let k=1; r.stops.forEach(id=>{ L.marker(toLL(nodes[id].p), {icon: icons.step(k++), zIndexOffset:600}).addTo(layers.route); });
     L.marker(toLL(nodes[state.spawn].p), {icon: icons.spawn(nodes[state.spawn],true), zIndexOffset:700}).addTo(layers.route);
     if(r.extract && r.extract.ok) L.marker(toLL(r.extract.n.p), {icon: icons.extract(r.extract.n,true), zIndexOffset:700}).addTo(layers.route);
+    (r.extract && r.extract.contracts || []).forEach((s,k2)=>{ const ms=POI.missions[s.i];
+      L.marker(toLL(ms.p), {icon: L.divIcon({className:'mkw z-ms', html:`<div class="ms ct${ms.hv?' hv':''}"><span>!${k2+1}</span></div>`, iconSize:[24,24], iconAnchor:[12,12]}), zIndexOffset:650}).addTo(layers.route)
+        .bindTooltip(`Hợp đồng ${k2+1}: trạm gần ${nodes[s.near].name.split(' (')[0]}`, {direction:'top'}); });
     map.fitBounds(L.latLngBounds(ll).pad(0.15));
 
     const sp = nodes[state.spawn];
@@ -228,10 +247,14 @@
     r.legs.forEach(l=>{ const n=nodes[l.id]; const keys=[...state.keys].filter(kk=>ZD.keycards[kk].node===l.id);
       const near = POI.missions.filter(ms=>Math.hypot((ms.p[0]-n.p[0])*ZD.image.metersX,(ms.p[1]-n.p[1])*ZD.image.metersY) < 65).length;
       html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}${l.rush>0.03?' · <span class="hot">tới phút '+l.tAt.toFixed(1)+': đội một hiệu đang lao vào Admin</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 65 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
-    if(r.extract && r.extract.ok){ const e=r.extract.n; html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b><br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span></li>`; }
+    if(r.extract && r.extract.ok){ const e=r.extract.n; const cts=r.extract.contracts||[];
+      if(cts.length){ const byStop={}; cts.forEach(s=>{ const nm=nodes[s.near].name.split(' (')[0]; byStop[nm]=(byStop[nm]||0)+1; });
+        html += `<li class="contract"><b>Làm ${cts.length} hợp đồng để đủ ${fmt(r.extract.fee)} hợp kim</b><br><span class="sub">${Object.entries(byStop).map(([k3,v])=>`${v} ở trạm gần ${k3}`).join(', ')} · thêm ~${r.extract.cMin.toFixed(1)} phút · giả định ${fmt(state.contractReward)} hợp kim mỗi hợp đồng. Nhận hợp đồng ngay khi tới cụm, làm xong trước khi rút.</span></li>`; }
+      const fb = e.cond==='random' ? (r.allCands||[]).find(x=>x.ok && x.n.cond!=='random') : null;
+      html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b><br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span>${fb?`<br><span class="sub"><b>Không thấy khói xanh:</b> đi ${fb.n.letter} · ${fb.n.name} (~${Math.round(fb.t)} phút từ cụm cuối${fb.fee?', phí '+fmt(fb.fee):''}).</span>`:''}</li>`; }
     else html += `<li class="exit"><b>Không có điểm rút phù hợp</b> với điều kiện đã chọn.</li>`;
     html += '</ol>';
-    html += '<details><summary>Điểm rút dự phòng</summary><ul class="alt">' + r.alternatives.map(a=>`<li><b>${a.n.letter} · ${a.n.name}</b> — ${a.ok?('~'+Math.round(a.t)+' phút'+(a.fee?', phí '+fmt(a.fee):'')):a.why.join('; ')}</li>`).join('') + '</ul></details>';
+    html += '<details><summary>Điểm rút dự phòng</summary><ul class="alt">' + r.alternatives.map(a=>`<li><b>${a.n.letter} · ${a.n.name}</b> — ${a.ok?('~'+Math.round(a.t)+' phút'+(a.fee?', phí '+fmt(a.fee):'')+(a.contracts&&a.contracts.length?`, cần ${a.contracts.length} hợp đồng (+${a.cMin.toFixed(1)} ph), EV thấp hơn tuyến đang chọn`:'')):a.why.join('; ')}</li>`).join('') + '</ul></details>';
     const warn = [];
     const short = id => nodes[id].name.split(' ')[0];
     ['W','E'].forEach(side=>{ const S=ZD.squads[side]; const sideVi = side==='W'?'Tây':'Đông';
@@ -240,6 +263,9 @@
       else warn.push(`Chắc chắn có đúng 1 đội ở ${S.pair.map(short).join(' hoặc ')} (50/50, không bao giờ cả hai). Đây là cặp "một hiệu" bên ${sideVi}, thường lao thẳng vào Admin.`); });
     warn.push('Vòng đỏ là bán kính 100 m quanh spawn có thể có địch, càng đậm càng chắc.');
     if(sp.pair) warn.push('Spawn này chạy tới Admin chỉ mất khoảng 30–50 giây: đội một hiệu bên kia cũng vậy, đừng đứng loot ở giữa.');
+    if(r.ev < 0) warn.push('Với điều kiện đang chọn, mọi tuyến đều lỗ trung bình. Giữ tổng cân nặng dưới giới hạn để dùng Đỉnh đập, làm hợp đồng để trả phí, hoặc chơi Dễ.');
+    if(state.payMode==='none' && !state.weightLimit) warn.push(`Bạn chưa có hợp kim cho điểm trả phí. Nếu giữ được tổng cân nặng dưới ${state.mode==='easy'?50:30} kg, tick ô cân nặng để mở Đỉnh đập: thường an toàn hơn điểm cố định nhiều.`);
+    if(r.extract && r.extract.ok && r.extract.n.cond==='paid' && state.payMode!=='none') warn.push('Chỉ trả phí khi đồ ngoài Hộp An Toàn đáng khoảng 150.000 trở lên. Dưới mức đó, giữ lại hợp kim và đi Đỉnh đập hoặc điểm cố định.');
     if(state.keys.size) warn.push('Bán thẻ được trước khi dùng; nhìn qua cửa sổ trước khi mở.');
     warn.push('Cất đồ đỏ/vàng/thẻ vào Hộp An Toàn ngay khi nhặt. Ngừng loot khi còn 3 phút.');
     html += '<ul class="warn">' + warn.map(w=>`<li>${w}</li>`).join('') + '</ul>';
@@ -262,7 +288,12 @@
   const keysCount = () => { const n = state.keys.size; const el = $('#keysCount'); if(el) el.textContent = n ? `(${n} đã chọn)` : ''; };
   keyBox.addEventListener('change', keysCount);
   try { if(window.matchMedia('(max-width: 860px)').matches) $('#keysBox').open = false; } catch(e) {}
-  document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change', e=>{ state.mode=e.target.value; render(); }));
+  const paySel = $('#pay'), rewardIn = $('#reward'), rewardRow = $('#rewardRow');
+  const syncPay = () => { paySel.value = state.payMode; rewardRow.hidden = state.payMode!=='contracts'; };
+  paySel.addEventListener('change', e=>{ state.payMode=e.target.value; syncPay(); render(); });
+  rewardIn.addEventListener('change', e=>{ const v=Math.max(1000, +e.target.value||10000); state.contractReward=v; e.target.value=v; render(); });
+  syncPay();
+  document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change', e=>{ state.mode=e.target.value; state.payMode=PAY_DEFAULT[state.mode]; syncPay(); render(); }));
   document.querySelectorAll('input[name=goal]').forEach(r=>r.addEventListener('change', e=>{ state.stops=+e.target.value; state.maxLootMin = state.stops===1?8:(state.stops===2?14:20); render(); }));
   $('#avoid').addEventListener('input', e=>{ state.avoid=+e.target.value; $('#avoidV').textContent=['tắt','thấp','vừa','cao','rất cao'][Math.round(+e.target.value*2)]; render(); });
   $('#wl').addEventListener('change', e=>{ state.weightLimit=e.target.checked; render(); });
