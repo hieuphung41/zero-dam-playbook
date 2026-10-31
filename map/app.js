@@ -241,7 +241,7 @@
     const ll = routeLatLngs(r.route);
     L.polyline(ll, {color:'#1c1c1c', weight:8, opacity:.55}).addTo(layers.route);
     L.polyline(ll, {color:'#ff6a00', weight:4, opacity:.95}).addTo(layers.route);
-    let k=1; r.stops.forEach(id=>{ L.marker(toLL(nodes[id].p), {icon: icons.step(k++), zIndexOffset:600}).addTo(layers.route); });
+    let k=1; r.stops.forEach(id=>{ L.marker(toLL(nodes[id].p), {icon: icons.step(k++), zIndexOffset:800}).addTo(layers.route); });
     L.marker(toLL(nodes[state.spawn].p), {icon: icons.spawn(nodes[state.spawn],true), zIndexOffset:700}).addTo(layers.route);
     if(r.extract && r.extract.ok) L.marker(toLL(r.extract.n.p), {icon: icons.extract(r.extract.n,true), zIndexOffset:700}).addTo(layers.route);
     const pbAll = r.legs.flatMap(l=>l.pb?l.pb.ids:[]).concat(r.exPb?r.exPb.ids:[]);
