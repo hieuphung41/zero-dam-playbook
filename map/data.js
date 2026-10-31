@@ -10,14 +10,14 @@
   add('s1','spawn',1051,1690,{name:'W1 · Cửa đường phía Tây', side:'W'});
   add('s2','spawn',1100,1147,{name:'W2 · Đường vành đai Tây Bắc', side:'W'});
   add('s3','spawn',1151,963,{name:'W3 · Bãi đất Tây Bắc', side:'W'});
-  add('s4','spawn',1686,859,{name:'W4 · Bắc Doanh trại', side:'W', nearAdmin:true});
-  add('s5','spawn',1647,1060,{name:'W5 · Nam Doanh trại (bờ hồ)', side:'W', nearAdmin:true});
+  add('s4','spawn',1686,859,{name:'W4 · Đông Bắc Doanh trại', side:'W', pair:true});
+  add('s5','spawn',1647,1060,{name:'W5 · Đông Nam Doanh trại (bờ hồ)', side:'W', pair:true});
   add('s6','spawn',1357,1442,{name:'W6 · Nhà máy xi măng', side:'W'});
   add('s7','spawn',1537,1770,{name:'W7 · Công trường ống nước', side:'W'});
-  add('s8','spawn',2315,1384,{name:'E1 · Bắc Trạm biến áp chính', side:'E', guaranteed:true});
+  add('s8','spawn',2315,1384,{name:'E1 · Bắc Trạm biến áp chính', side:'E', pair:true});
   add('s9','spawn',2338,2099,{name:'E2 · Nam Trạm biến áp phụ', side:'E'});
   add('s10','spawn',2687,1986,{name:'E3 · Đường Đông Nam', side:'E'});
-  add('s11','spawn',2679,1537,{name:'E4 · Đường Đông giữa', side:'E'});
+  add('s11','spawn',2679,1537,{name:'E4 · Đông Trạm biến áp chính', side:'E', pair:true});
   add('s12','spawn',2943,1410,{name:'E5 · Chân đập phía Đông', side:'E'});
   add('s13','spawn',3092,1975,{name:'E6 · Trung tâm du khách', side:'E'});
   add('s14','spawn',2910,2521,{name:'E7 · Nam Trung tâm du khách', side:'E'});
@@ -42,9 +42,9 @@
   add('pipeline','poi',1560,1740,{name:'Công trường ống nước / bờ sông Tây', valueNormal:105000, valueEasy:42000, risk:1, lootMin:3, loot:'11 tủ dụng cụ dọc sông, túi du lịch, thùng tiếp tế, tổ chim'});
   add('river','poi',1800,1900,{name:'Vùng nước phía Nam (S9)', valueNormal:90000, valueEasy:36000, risk:1, lootMin:3, loot:'thuyền (nhiên liệu, điện tử), 2 túi du lịch, tổ chim Vlindflower; hang ngầm giá trị thấp'});
   add('underground','poi',2040,1540,{name:'Đường hầm ngầm (Tây → Trạm biến áp)', valueNormal:100000, valueEasy:40000, risk:2, lootMin:3, loot:'túi, tủ dụng cụ, thùng chuyển phát; phòng thẻ Lối ngầm'});
-  add('adminW','poi',2170,1050,{name:'Toà Tây (Khu hành chính)', valueNormal:500000, valueEasy:200000, risk:4, lootMin:4, loot:'WC 2F (Rolex), bàn văn phòng, quầy nước, bàn cạnh phòng cầu dao; 3 phòng thẻ; công tắc thang máy'});
-  add('adminE','poi',2310,1130,{name:'Toà Đông (Khu hành chính)', valueNormal:520000, valueEasy:208000, risk:4, lootMin:4, loot:'văn phòng 2F, két 2F, quầy lễ tân; Manager\'s Office, Equipment Room; boss Saeed ngay dưới'});
-  add('adminOut','poi',2300,960,{name:'Vành đai Admin (container, bãi đỗ, công trường)', valueNormal:215000, valueEasy:86000, risk:3, lootMin:3, loot:'6 hầm giấu đồ, thùng tiếp tế dã ngoại, túi; chokepoint cầu cạnh bãi container'});
+  add('adminW','poi',2170,1050,{rush:true, name:'Toà Tây (Khu hành chính)', valueNormal:500000, valueEasy:200000, risk:4, lootMin:4, loot:'WC 2F (Rolex), bàn văn phòng, quầy nước, bàn cạnh phòng cầu dao; 3 phòng thẻ; công tắc thang máy'});
+  add('adminE','poi',2310,1130,{rush:true, name:'Toà Đông (Khu hành chính)', valueNormal:520000, valueEasy:208000, risk:4, lootMin:4, loot:'văn phòng 2F, két 2F, quầy lễ tân; Manager\'s Office, Equipment Room; boss Saeed ngay dưới'});
+  add('adminOut','poi',2300,960,{rush:true, name:'Vành đai Admin (container, bãi đỗ, công trường)', valueNormal:215000, valueEasy:86000, risk:3, lootMin:3, loot:'6 hầm giấu đồ, thùng tiếp tế dã ngoại, túi; chokepoint cầu cạnh bãi container'});
   add('vault','poi',2440,690,{name:'Lòng đập / kho vàng', valueNormal:350000, valueEasy:140000, risk:4, lootMin:4, loot:'20 đống xu vàng, két; chỉ mở qua nhiệm vụ Gold/Wall Breaker, có gas và guard của Saeed'});
   add('mainSub','poi',2380,1640,{name:'Trạm biến áp chính', valueNormal:360000, valueEasy:144000, risk:3, lootMin:4, loot:'3 server, két (thẻ), chốt bảo vệ cổng, phòng flight-case 2F; Tech Room (thẻ)'});
   add('smallSub','poi',2160,1862,{name:'Trạm biến áp phụ', valueNormal:160000, valueEasy:64000, risk:2, lootMin:3, loot:'két nhỏ, flight case, sàn giữa 2 máy phát, nóc thùng gỗ; phòng ký túc (thẻ rẻ nhất)'});
@@ -87,10 +87,13 @@
   };
 
   window.ZD = {
-    image:{src:'zero-dam.jpg', width:2400, height:2100, metersX:1800, metersY:1575,
+    image:{src:'zero-dam.jpg', width:2400, height:2100, metersX:950, metersY:832,
       credit:'Nền: deltaforcedb.com (bố cục trước S9, sông phía Nam hẹp hơn thực tế) © Tencent / Team Jade. Marker: công cụ map chính thức df.qq.com (9/2026). Giá trị loot: ước lượng.'},
-    profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, minuteCost:10000, maxLootMin:14}},
-    squads:{perSide:3, guaranteed:{E:{s8:1}, W:{s4:0.5, s5:0.5}}},
+    profiles:{easy:{kit:0, pDeath:[0.01,0.02,0.05,0.12,0.22], pTravel:0.006, pressure:0.12, rush:0.08, minuteCost:6000, maxLootMin:14}, normal:{kit:112500, pDeath:[0.02,0.04,0.09,0.18,0.32], pTravel:0.012, pressure:0.2, rush:0.13, minuteCost:10000, maxLootMin:14}},
+    /* spawn rule (community guide image, 2026-01-19, matches the 14 official spawn markers): each side has 3 squads —
+       exactly ONE squad in its "#1" pair (one position or the other, never both) and 2 squads among its 5 other spots */
+    squads:{W:{pair:['s4','s5'], random:['s1','s2','s3','s6','s7'], randomSquads:2},
+            E:{pair:['s8','s11'], random:['s9','s10','s12','s13','s14'], randomSquads:2}},
     nodes, edges, keycards
   };
 })();

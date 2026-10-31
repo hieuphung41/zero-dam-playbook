@@ -42,7 +42,7 @@
   const icon = (html, size, cls) => L.divIcon({className:'mkw '+(cls||''), html, iconSize:[size,size], iconAnchor:[size/2,size/2]});
   const EXT = {fixed:['hex','exit','ex-fixed'], random:['hex','dice','ex-random',true], paid:['hex','coin','ex-paid'], weight:['hex','weight','ex-cond'], drop:['hex','bag','ex-cond'], lever:['hex','lift','ex-lever']};
   const icons = {
-    spawn:(n,sel)=> icon(mkSvg('circle','person','sp'+(n.guaranteed?' sp-g':'')+(sel?' sel':''), n.name.split(' ')[0]), sel?36:26, 'z-sp'),
+    spawn:(n,sel)=> icon(mkSvg('circle','person','sp'+(n.pair?' sp-g':'')+(sel?' sel':''), n.name.split(' ')[0]), sel?36:26, 'z-sp'),
     extract:(n,sel)=> { const e=EXT[n.cond]||EXT.fixed; return icon(mkSvg(e[0],e[1],e[2]+(sel?' sel':''), n.letter, e[3]), sel?40:32, 'z-ex'); },
     key:()=> icon(mkSvg('square','key','ky'), 24, 'z-ky'),
     poi:()=> icon(mkSvg('diamond','crate','po'), 22, 'z-po'),
@@ -69,27 +69,28 @@
   const routeLatLngs = ids => { let out=[]; for(let i=1;i<ids.length;i++){ const g = geom(ids[i-1], ids[i]).map(q=>[(1-q[1]/H)*H, q[0]]); out = out.concat(i===1 ? g : g.slice(1)); } return out; };
 
   /* ---------- enemy spawn model ----------
-     14 spawns, 3 squads per side. One squad is always at the side's "#1" spot (E: E1; W: W4 or W5, 50/50 — two
-     possible positions per the guides). The other squads on each side are spread evenly over the free spots. */
+     Each side: exactly one squad in its "#1" pair (W4/W5, E1/E4 - one or the other, never both) and 2 squads spread
+     over its 5 other spots. Your own position is known, which conditions the rest. */
   function spawnProbs(mySpawn){
     const me = nodes[mySpawn]; const out = {};
     ['W','E'].forEach(side=>{
-      const spots = ZD.nodes.filter(n=>n.type==='spawn' && n.side===side).map(n=>n.id);
-      const gdist = ZD.squads.guaranteed[side];
-      Object.entries(gdist).forEach(([g,q])=>{
-        const mine = me.side===side;
-        let squads = ZD.squads.perSide, free = spots.filter(id=>id!==g);
-        if(mine){ squads -= 1; if(mySpawn!==g) free = free.filter(id=>id!==mySpawn); }
-        const randomSquads = Math.max(0, squads - (mySpawn===g ? 0 : 1));
-        spots.forEach(id=>{ if(id===mySpawn) return; let p = 0;
-          if(id===g) p = 1; else if(free.includes(id)) p = randomSquads/free.length;
-          out[id] = (out[id]||0) + q*p; });
-      });
+      const S = ZD.squads[side], mine = me.side===side;
+      if(mine && S.pair.includes(mySpawn)){            // you ARE the #1 squad: the other pair spot is empty
+        S.pair.forEach(id=>{ if(id!==mySpawn) out[id]=0; });
+        S.random.forEach(id=>out[id]=S.randomSquads/S.random.length);
+      } else if(mine){                                   // you are one of the 2 random squads
+        S.pair.forEach(id=>out[id]=1/S.pair.length);
+        const others = S.random.filter(id=>id!==mySpawn);
+        others.forEach(id=>out[id]=(S.randomSquads-1)/others.length);
+      } else {
+        S.pair.forEach(id=>out[id]=1/S.pair.length);
+        S.random.forEach(id=>out[id]=S.randomSquads/S.random.length);
+      }
     });
     return out;
   }
-  // "pressure" on a cluster: how likely enemy squads start within easy reach of it (road distance, 250 m scale)
-  const pressureOf = (probs, id) => Object.entries(probs).reduce((acc,[s,p])=>acc + p*Math.exp(-mdist(s,id)/250), 0);
+  // "pressure" on a cluster: how likely enemy squads start within easy reach of it (road distance, 140 m scale, about 35 s of running)
+  const pressureOf = (probs, id) => Object.entries(probs).reduce((acc,[s,p])=>acc + p*Math.exp(-mdist(s,id)/140), 0);
 
   /* ---------- planner ----------
      Expected value of a stop = loot × (1 − pDeath) − pDeath × (kit + 70% of loot already carried) − minutes × minuteCost.
@@ -102,8 +103,13 @@
     const probs = spawnProbs(state.spawn);
     const pressure = {}; ZD.nodes.filter(n=>n.type==='poi').forEach(n=>pressure[n.id]=pressureOf(probs,n.id));
     const pd = r => prof.pDeath[r];
-    const timing = (n, t) => n.risk>=3 ? (t<1.5 ? 0.6 : t<3 ? 0.8 : t<8 ? 1.0 : 0.8) : 1; // contested zones: cheaper if you are first in, worst at 3–8 min
-    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, pd(n.risk)*timing(n,tAtArrival) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12));
+    // contested zones away from the opening rush (main substation, vault): cheaper if you are first in, worst at 3–8 min
+    const timing = (n, t) => (n.risk>=3 && !n.rush) ? (t<1.5 ? 0.6 : t<3 ? 0.8 : t<8 ? 1.0 : 0.8) : 1;
+    // opening rush: every "#1" squad that is not you heads straight for Admin; their presence peaks in minutes 0.5–5
+    const rushers = ['W','E'].filter(side=>!ZD.squads[side].pair.includes(state.spawn)).length;
+    const presence = t => t<0.5 ? 0.6 : t<5 ? 1 : t<9 ? 1-0.8*(t-5)/4 : 0.2;
+    const rushRisk = (n, t) => n.rush ? avoid*prof.rush*rushers*presence(t) : 0;
+    const pDeathAt = (n, travelMin, tAtArrival) => Math.min(0.9, pd(n.risk)*timing(n,tAtArrival) + prof.pTravel*travelMin + avoid*prof.pressure*(pressure[n.id]||0)*Math.max(0.25, 1 - tAtArrival/12) + rushRisk(n,tAtArrival));
     const wanted = [...new Set([...state.keys].map(k => ZD.keycards[k].node).concat([...state.forced]))];
     const roomValue = id => [...state.keys].filter(k=>ZD.keycards[k].node===id).reduce((a,k)=>a+ZD.keycards[k].ev,0);
     const valOf = n => ((mode==='easy' ? n.valueEasy : n.valueNormal) || 0) + (wanted.includes(n.id) ? roomValue(n.id) : 0);
@@ -120,7 +126,7 @@
     function evaluate(order){
       let c=state.spawn, tMin=0, carried=0, pSurv=1; const legs=[];
       for(const id of order){ const n=nodes[id]; const m=mdist(c,id); if(m===Infinity) return null; const t=mins(m); const p=pDeathAt(n,t,tMin+t);
-        legs.push({id, m, t, lootMin:n.lootMin, p, pressure:pressure[id]||0, value:valOf(n), tAt:tMin+t}); tMin += t + n.lootMin; carried += valOf(n); pSurv *= (1-p); c=id; }
+        legs.push({id, m, t, lootMin:n.lootMin, p, pressure:pressure[id]||0, rush:rushRisk(n,tMin+t), value:valOf(n), tAt:tMin+t}); tMin += t + n.lootMin; carried += valOf(n); pSurv *= (1-p); c=id; }
       const cands = extracts.map(n=>{ const {ok,why}=extractOk(n); const m=mdist(c,n.id); const t=mins(m), wt=mins(wdist(c,n.id)); const fee=feeOf(n);
         const p = Math.min(0.9, pd(n.risk)*(n.cond==='fixed'?1.3:1) + prof.pTravel*t);
         const score = (ok && m!==Infinity) ? -(p*(prof.kit + 0.7*carried)) - wt*prof.minuteCost - fee - (n.cond==='random' && mode!=='easy' ? 60000 : 0) : -Infinity;
@@ -198,7 +204,7 @@
     // enemy spawn probabilities: heat circles + % on labels
     Object.entries(spawnMarkers).forEach(([id,m])=>{ const p = r.probs[id]; const short = nodes[id].name.split(' ')[0];
       m.setTooltipContent(id===state.spawn ? short+' · bạn' : short+' · '+Math.round((p||0)*100)+'%');
-      if(p>0){ L.circle(toLL(nodes[id].p), {radius: 230*PXM, stroke:false, fillColor:'#e53935', fillOpacity:0.07+0.4*p, interactive:false}).addTo(layers.heat); } });
+      if(p>0){ L.circle(toLL(nodes[id].p), {radius: 120*PXM, stroke:false, fillColor:'#e53935', fillOpacity:0.07+0.4*p, interactive:false}).addTo(layers.heat); } });
     const ll = routeLatLngs(r.route);
     L.polyline(ll, {color:'#1c1c1c', weight:8, opacity:.55}).addTo(layers.route);
     L.polyline(ll, {color:'#ff6a00', weight:4, opacity:.95}).addTo(layers.route);
@@ -219,16 +225,20 @@
       html += `<div class="forced">Ép ghé: ${[...state.forced].map(id=>`<span class="chip">${nodes[id].name} <button type="button" class="unforce" data-id="${id}" aria-label="bỏ">×</button></span>`).join(' ')}<br><span class="sub">So với tuyến tự do (${free.stops.map(id=>nodes[id].name.split(' (')[0]).join(' → ')||'không loot'}): EV ${free.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(free.ev)/1000))}k, sống ${pct(free.pSurv)} → tuyến ép: EV ${r.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(r.ev)/1000))}k, sống ${pct(r.pSurv)}.</span></div>`; }
     html += '<ol class="steps">';
     r.legs.forEach(l=>{ const n=nodes[l.id]; const keys=[...state.keys].filter(kk=>ZD.keycards[kk].node===l.id);
-      const near = POI.missions.filter(ms=>Math.hypot((ms.p[0]-n.p[0])*ZD.image.metersX,(ms.p[1]-n.p[1])*ZD.image.metersY) < 120).length;
-      html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 120 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
+      const near = POI.missions.filter(ms=>Math.hypot((ms.p[0]-n.p[0])*ZD.image.metersX,(ms.p[1]-n.p[1])*ZD.image.metersY) < 65).length;
+      html += `<li><b>${n.name}</b>${state.forced.has(l.id)?' <span class="chip">ép</span>':''} <span class="risk r${n.risk}">rủi ro ${RISK[n.risk]}</span> <span class="sub">đi ~${Math.round(l.m)} m · ${l.t.toFixed(1)} ph · loot ${n.lootMin} ph · p chết ${pct(l.p)}${l.pressure>0.25?' · <span class="hot">áp lực địch '+pct(Math.min(1,l.pressure))+'</span>':''}${l.rush>0.03?' · <span class="hot">tới phút '+l.tAt.toFixed(1)+': đội một hiệu đang lao vào Admin</span>':''}</span><br><span class="sub">${n.loot}</span>${near?`<br><span class="sub">! ${near} trạm nhiệm vụ trong 65 m</span>`:''}${keys.map(kk=>`<br><span class="keyline">🔑 ${ZD.keycards[kk].name}: ${ZD.keycards[kk].tip}</span>`).join('')}</li>`; });
     if(r.extract && r.extract.ok){ const e=r.extract.n; html += `<li class="exit"><b>Rút: ${e.letter} · ${e.name}</b><br><span class="sub">${e.desc}${r.extract.fee?` · phí ${fmt(r.extract.fee)}`:''} · ~${Math.round(r.extract.t)} phút di chuyển · p chết ${pct(r.extract.p)}</span></li>`; }
     else html += `<li class="exit"><b>Không có điểm rút phù hợp</b> với điều kiện đã chọn.</li>`;
     html += '</ol>';
     html += '<details><summary>Điểm rút dự phòng</summary><ul class="alt">' + r.alternatives.map(a=>`<li><b>${a.n.letter} · ${a.n.name}</b> — ${a.ok?('~'+Math.round(a.t)+' phút'+(a.fee?', phí '+fmt(a.fee):'')):a.why.join('; ')}</li>`).join('') + '</ul></details>';
     const warn = [];
-    const hot = Object.entries(r.probs).filter(([id,p])=>p>=0.5).map(([id])=>nodes[id].name.split(' ')[0]);
-    if(hot.length) warn.push('Gần như chắc chắn có đội địch ở: '+hot.join(', ')+'. Vùng đỏ trên map là bán kính 230 m quanh spawn địch.');
-    if(sp.guaranteed) warn.push('Spawn này cách Toà hành chính ~30 giây: rời ngay, không loot Admin.');
+    const short = id => nodes[id].name.split(' ')[0];
+    ['W','E'].forEach(side=>{ const S=ZD.squads[side]; const sideVi = side==='W'?'Tây':'Đông';
+      if(S.pair.includes(state.spawn)){ const other=S.pair.find(id=>id!==state.spawn);
+        warn.push(`Bạn là đội "một hiệu" bên ${sideVi}: ${short(other)} chắc chắn trống. 2 đội còn lại bên ${sideVi} nằm ở ${S.random.map(short).join(', ')} (40% mỗi điểm).`); }
+      else warn.push(`Chắc chắn có đúng 1 đội ở ${S.pair.map(short).join(' hoặc ')} (50/50, không bao giờ cả hai). Đây là cặp "một hiệu" bên ${sideVi}, thường lao thẳng vào Admin.`); });
+    warn.push('Vùng đỏ là bán kính 120 m quanh spawn có thể có địch, càng đậm càng chắc.');
+    if(sp.pair) warn.push('Spawn này chạy tới Admin chỉ mất khoảng 30–50 giây: đội một hiệu bên kia cũng vậy, đừng đứng loot ở giữa.');
     if(state.keys.size) warn.push('Bán thẻ được trước khi dùng; nhìn qua cửa sổ trước khi mở.');
     warn.push('Cất đồ đỏ/vàng/thẻ vào Hộp An Toàn ngay khi nhặt. Ngừng loot khi còn 3 phút.');
     html += '<ul class="warn">' + warn.map(w=>`<li>${w}</li>`).join('') + '</ul>';

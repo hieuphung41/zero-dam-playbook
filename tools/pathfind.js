@@ -27,7 +27,7 @@ const nodes=ZD.nodes.filter(n=>n.type!=='wp' && n.type!=='boss'); const cells=no
 function simplify(pts,eps){ if(pts.length<3) return pts; const sq=(p,a,b)=>{ const dx=b[0]-a[0],dy=b[1]-a[1]; const t=dx||dy?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy):0; const u=Math.max(0,Math.min(1,t)); return (p[0]-a[0]-u*dx)**2+(p[1]-a[1]-u*dy)**2; };
   let maxd=0,idx=0; for(let i=1;i<pts.length-1;i++){ const d=sq(pts[i],pts[0],pts[pts.length-1]); if(d>maxd){maxd=d;idx=i;} }
   if(maxd>eps*eps){ const a=simplify(pts.slice(0,idx+1),eps), b=simplify(pts.slice(idx),eps); return a.slice(0,-1).concat(b); } return [pts[0],pts[pts.length-1]]; }
-const MPP=0.75*G; // metres per cell
+const MPP=0.396*G; // metres per cell: official map = 81086 cm per 2048 px, 0.396 m/px
 const out={}; const t0=Date.now();
 for(let i=0;i<nodes.length;i++){ const [sx,sy]=cells[i]; const {dist,prev}=dijkstra(sx,sy);
   for(let j=i+1;j<nodes.length;j++){ const [tx,ty]=cells[j]; const tk=ty*GW+tx; if(dist[tk]===Infinity){ console.error('unreachable', nodes[i].id, nodes[j].id); continue; }

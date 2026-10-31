@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm');const any=new Proxy(function(){},{get:(t,k)=>k==='then'?undefined:(k===Symbol.toPrimitive?(()=>0):any),apply:()=>any,construct:()=>any});
+const el=()=>({addEventListener(){},appendChild(){},querySelector:()=>el(),querySelectorAll:()=>[],classList:{remove(){},add(){},toggle(){}},innerHTML:'',textContent:'',dataset:{},hidden:false});
+const document={querySelector:()=>el(),querySelectorAll:()=>[],createElement:()=>el(),getElementById:()=>el()};const ctx={window:{},document,L:any,console};ctx.window.document=document;vm.createContext(ctx);
+for(const f of ['data.js','paths.js','poi.js'])vm.runInContext(fs.readFileSync(f,'utf8'),ctx);vm.runInContext('var ZD=window.ZD;'+fs.readFileSync('app.js','utf8'),ctx);
+const Z=ctx.window.ZD, nm=id=>Z.nodes.find(n=>n.id===id).name.split(' ')[0];
+const show=(lab,st)=>{const r=ctx.window.ZDplan(Object.assign({mode:'normal',keys:[],stops:2,maxLootMin:14,avoid:1,weightLimit:false,forced:[]},st));
+  console.log(`${lab}: ${r.route.map(id=>Z.nodes.find(n=>n.id===id).type==='spawn'?nm(id):id).join(' > ')} | ${r.tMin.toFixed(1)} ph, ${Math.round(r.dist)} m, loot ${r.value/1000}k, sống ${Math.round(r.pSurv*100)}%, EV ${Math.round(r.ev/1000)}k`);
+  r.legs.forEach(l=>console.log(`     ${l.id}: đi ${Math.round(l.m)} m, tới phút ${l.tAt.toFixed(1)}, áp lực ${l.pressure.toFixed(2)}, p chết ${Math.round(l.p*100)}%`)); return r;};
+const sp=process.argv[2];
+const r0=ctx.window.ZDplan({spawn:sp,mode:'normal',keys:[],stops:1,maxLootMin:8,forced:[]});
+console.log('xác suất địch:', Object.entries(r0.probs).map(([k,v])=>nm(k)+' '+Math.round(v*100)+'%').join(', '));
+for(const n of [1,2,3]) show(`${nm(sp)} ${n} cụm`,{spawn:sp,stops:n,maxLootMin:n===1?8:(n===2?14:20)});
+(process.argv[3]||'').split(',').filter(Boolean).forEach(f=>show(`${nm(sp)} ép ${f}`,{spawn:sp,forced:f.split('+')}));
