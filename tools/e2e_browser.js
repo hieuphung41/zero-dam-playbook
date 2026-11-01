@@ -9,7 +9,7 @@ const SPAWNS=['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s1
     const page=await ctx.newPage(); const errs=[], failed=[];
     page.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); }); page.on('pageerror',e=>errs.push('pageerror: '+e.message));
     page.on('response',r=>{ if(r.status()>=400) failed.push(r.url()+' HTTP '+r.status()); });
-    const open=async()=>{ await page.goto(URL,{waitUntil:'load',timeout:90000}); await page.waitForSelector('.mkh[data-id="s1"]'); await page.waitForTimeout(400); };
+    const open=async()=>{ await page.goto(URL,{waitUntil:'domcontentloaded',timeout:90000}); await page.waitForSelector('.mkh[data-id="s1"]'); await page.waitForTimeout(400); };
     await open();
     const legend0=await page.evaluate(()=>getComputedStyle(document.getElementById('legend')).display);
     await page.click('#legendBtn',{timeout:3000}); const legend1=await page.evaluate(()=>getComputedStyle(document.getElementById('legend')).display);
@@ -68,6 +68,13 @@ const SPAWNS=['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s1
     await page.selectOption('#spawnSel','s13'); await page.waitForTimeout(300); say(`[${vp.name}] E6 + dưới 30kg (F không được phép): ${await exitOf()}`);
     await page.check('#drop'); await page.waitForTimeout(300); say(`[${vp.name}] E6 + chấp nhận bỏ ba lô: ${await exitOf()}`);
     await page.uncheck('#drop'); await page.uncheck('#wl');
+    // ambush layer
+    await page.selectOption('#spawnSel','s6'); await page.check('#ly-ambush'); await page.waitForTimeout(1200);
+    const amb = await page.evaluate(()=>({markers:document.querySelectorAll('.mkw.z-amb').length, items:document.querySelectorAll('#ambush li').length, first:(document.querySelector('#ambush li')||{}).innerText||''}));
+    say(`[${vp.name}] ambush layer W6: ${amb.markers} markers, ${amb.items} list items | ${amb.first.replace(/\s+/g,' ').slice(0,120)}`);
+    if(amb.markers<3 || amb.items<3) problems.push(vp.name+': ambush layer empty');
+    if(vp.name==='desktop') await page.screenshot({path:`${OUT}/${vp.name}_ambush.png`});
+    await page.uncheck('#ly-ambush');
     // layers toggles
     for(const ly of ['ly-heat','ly-box','ly-mission']){ await page.uncheck('#'+ly); await page.waitForTimeout(150); }
     const after=await page.evaluate(()=>({heat:document.querySelectorAll('.leaflet-overlay-pane path').length, box:document.querySelectorAll('.mkw.z-bx').length, ms:document.querySelectorAll('.mkw.z-ms').length}));

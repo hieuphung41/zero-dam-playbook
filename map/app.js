@@ -16,7 +16,7 @@
   const toLL = p => [ (1-p[1])*H, p[0]*W ];
 
   const layers = {heat: L.layerGroup().addTo(map), spawn: L.layerGroup().addTo(map), extract: L.layerGroup().addTo(map), key: L.layerGroup().addTo(map),
-                  poi: L.layerGroup().addTo(map), box: L.layerGroup().addTo(map), boxAll: L.layerGroup(), mission: L.layerGroup().addTo(map), route: L.layerGroup().addTo(map)};
+                  poi: L.layerGroup().addTo(map), box: L.layerGroup().addTo(map), boxAll: L.layerGroup(), mission: L.layerGroup().addTo(map), ambush: L.layerGroup(), route: L.layerGroup().addTo(map)};
   const POI = window.ZDPOI || {containers:[], missions:[]};
   { const cl = ZD.nodes.filter(n=>n.type==='poi');
     POI.containers.forEach(c=>{ let best=null, bd=Infinity; cl.forEach(n=>{ const d=Math.hypot((c.p[0]-n.p[0])*ZD.image.width,(c.p[1]-n.p[1])*ZD.image.height); if(d<bd){bd=d;best=n.id;} }); c.cluster = bd<=260 ? best : null; c.core = bd<=120; }); }
@@ -299,6 +299,7 @@
     const bestN = rows.reduce((b,x)=> x.r.ev > b.r.ev ? x : b, rows[0]).n;
     opt.innerHTML = '<p class="sub">Mỗi dòng là tuyến tốt nhất khi dừng đúng số cụm đó. Cụm: '+rows.map(x=>x.n+' = '+(x.r.stops.map(id=>nodes[id].name.split(' (')[0].split(' / ')[0]).join(' → ')||'không')).join(' · ')+'</p><table class="opts"><thead><tr><th>Cụm</th><th>Loot</th><th>Phút</th><th>Sống</th><th>EV</th><th></th></tr></thead><tbody>' + rows.map(({n,r:x})=>
       `<tr class="${n===state.stops?'cur':''}"><td>${n}${n===bestN?' <span class="chip">khuyên dùng</span>':''}</td><td class="num">${fmt(Math.round(x.value/1000))}k</td><td class="num">${Math.round(x.tMin)}</td><td class="num">${pct(x.pSurv)}</td><td class="num">${x.ev>=0?'+':'−'}${fmt(Math.round(Math.abs(x.ev)/1000))}k</td><td><button type="button" class="pickopt" data-n="${n}">${n===state.stops?'đang xem':'xem'}</button></td></tr>`).join('') + '</tbody></table>';
+    if(typeof drawAmbush==='function') setTimeout(drawAmbush, 0);
     opt.querySelectorAll('.pickopt').forEach(b=>b.addEventListener('click', ()=>{ state.stops=+b.dataset.n; state.maxLootMin = state.stops===1?8:(state.stops===2?14:20); document.querySelectorAll('input[name=goal]').forEach(x=>x.checked = +x.value===state.stops); render(); }));
   }
 
@@ -324,9 +325,85 @@
   $('#drop').addEventListener('change', e=>{ state.allowDrop=e.target.checked; render(); });
   $('#passby').addEventListener('change', e=>{ state.passBy=e.target.checked; render(); });
   document.querySelectorAll('[data-layer]').forEach(cb=>{ const l=layers[cb.dataset.layer]; if(cb.checked && !map.hasLayer(l)) map.addLayer(l); if(!cb.checked && map.hasLayer(l)) map.removeLayer(l);
-    cb.addEventListener('change', e=>{ e.target.checked?map.addLayer(l):map.removeLayer(l); }); });
+    cb.addEventListener('change', e=>{ e.target.checked?map.addLayer(l):map.removeLayer(l); if(cb.dataset.layer==='ambush') drawAmbush(); }); });
+
+
+  /* ---------- ambush spots ----------
+     Simulate the other squads. Each enemy spawn (with its probability given your spawn) sends half a "rat" (budget kit,
+     best-EV route of 1–2 clusters, light, no alloy, will drop the backpack) and half a "team" (geared, fearless: "#1" squads
+     rush their Admin wing, the others loot 2 clusters; both use free exits). Routes are rasterised on a ~10 m grid with the minute
+     each squad passes; the busiest cells away from spawns become ambush spots, with their time window and who passes. */
+  const AMB = {cell:25, nms:300, spawnClear:150, exitClear:170, top:6};
+  const ambCache = {};
+  function withState(over, fn){ const keep={}; Object.keys(over).forEach(k=>{ keep[k]=state[k]; state[k]=over[k]; }); try { return fn(); } finally { Object.assign(state, keep); } }
+  function timedGeometry(route){
+    const out=[]; let t=0;
+    for(let i=1;i<route.length;i++){ const a=route[i-1], b=route[i]; const g=geom(a,b); const m=mdist(a,b); const legMin=isFinite(m)?mins(m):0;
+      let len=0; const acc=[0]; for(let k=1;k<g.length;k++){ len+=Math.hypot(g[k][0]-g[k-1][0], g[k][1]-g[k-1][1]); acc.push(len); }
+      g.forEach((q,k)=>{ if(i>1 && k===0) return; out.push([q[0], q[1], t + (len ? legMin*acc[k]/len : 0)]); });
+      t += legMin; if(nodes[b].type==='poi') t += nodes[b].lootMin; }
+    return out; }
+  function enemyRoutes(){
+    const probs = state.spawn ? spawnProbs(state.spawn) : (()=>{ const o={}; ['W','E'].forEach(sd=>{ const S=ZD.squads[sd]; S.pair.forEach(id=>o[id]=1/S.pair.length); S.random.forEach(id=>o[id]=S.randomSquads/S.random.length); }); return o; })();
+    const routes=[];
+    Object.entries(probs).forEach(([s,p])=>{ if(!(p>0)) return;
+      const base = {spawn:s, keys:new Set(), forced:new Set(), passBy:false};
+      const rat = withState(Object.assign({}, base, {payMode:'none', weightLimit:true, allowDrop:true, avoid:1}), ()=>
+        [1,2].map(n=>plan({stops:n, maxLootMin:n===1?8:14})).reduce((b,x)=> (x && (!b || x.ev>b.ev)) ? x : b, null));
+      const S = ZD.squads[nodes[s].side]; const wing = nodes[s].side==='W' ? 'adminW' : 'adminE';
+      const team = S.pair.includes(s)
+        ? withState(Object.assign({}, base, {forced:new Set([wing]), payMode:'none', weightLimit:false, allowDrop:false, avoid:0}), ()=>plan({stops:0, maxLootMin:20}))
+        : withState(Object.assign({}, base, {payMode:'none', weightLimit:false, allowDrop:false, avoid:0}), ()=>plan({stops:2, maxLootMin:14}));
+      if(rat && rat.extract) routes.push({spawn:s, kind:'rat', w:p*0.5, route:rat.route, exit:rat.extract.n.id});
+      if(team && team.extract) routes.push({spawn:s, kind:'team', w:p*0.5, route:team.route, exit:team.extract.n.id});
+    });
+    return routes; }
+  function computeAmbush(){
+    const key = state.mode+'|'+(state.spawn||'-'); if(ambCache[key]) return ambCache[key];
+    const C=AMB.cell, cols=Math.ceil(W/C), rows=Math.ceil(H/C); const cells=new Map(); const routes=enemyRoutes();
+    const exits={};
+    routes.forEach(rt=>{ const g=timedGeometry(rt.route); const seen=new Set();
+      const ex=exits[rt.exit]||(exits[rt.exit]={id:rt.exit, rat:0, team:0, samples:[], spawns:new Set()}); ex[rt.kind]+=rt.w; ex.samples.push([g.length?g[g.length-1][2]:0, rt.w]); ex.spawns.add(rt.spawn);
+      for(let k=1;k<g.length;k++){ const [x0,y0,t0]=g[k-1], [x1,y1,t1]=g[k]; const n=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/(C/2)));
+        for(let j=0;j<=n;j++){ const x=x0+(x1-x0)*j/n, y=y0+(y1-y0)*j/n, t=t0+(t1-t0)*j/n; const ci=Math.floor(y/C)*cols+Math.floor(x/C); if(seen.has(ci)) continue; seen.add(ci);
+          let c=cells.get(ci); if(!c){ c={x:(ci%cols+0.5)*C, y:(Math.floor(ci/cols)+0.5)*C, rat:0, team:0, samples:[], spawns:new Set()}; cells.set(ci,c); }
+          c[rt.kind]+=rt.w; c.samples.push([t, rt.w]); c.spawns.add(rt.spawn); } } });
+    const spawnsPx = ZD.nodes.filter(n=>n.type==='spawn').map(n=>[n.p[0]*W, n.p[1]*H]);
+    const exitsPx = ZD.nodes.filter(n=>n.type==='extract').map(n=>[n.p[0]*W, n.p[1]*H]);
+    const cand=[...cells.values()].filter(c=>spawnsPx.every(q=>Math.hypot(q[0]-c.x,q[1]-c.y)>AMB.spawnClear) && exitsPx.every(q=>Math.hypot(q[0]-c.x,q[1]-c.y)>AMB.exitClear)).sort((a,b)=>(b.rat+b.team)-(a.rat+a.team));
+    const picked=[]; for(const c of cand){ if(picked.length>=AMB.top) break; if(picked.every(p=>Math.hypot(p.x-c.x,p.y-c.y)>AMB.nms)) picked.push(c); }
+    const quant=(s,q)=>{ const v=s.slice().sort((a,b)=>a[0]-b[0]); const tot=v.reduce((a,x)=>a+x[1],0); let acc=0; for(const [t,w] of v){ acc+=w; if(acc>=q*tot) return t; } return v.length?v[v.length-1][0]:0; };
+    const landmarks = ZD.nodes.filter(n=>n.type==='poi'||n.type==='extract');
+    const spots = picked.map((c,i)=>{ let best=null, bd=Infinity; landmarks.forEach(n=>{ const d=Math.hypot(n.p[0]*W-c.x, n.p[1]*H-c.y); if(d<bd){bd=d;best=n;} });
+      let lm=null, ld=Infinity; (ZD.landmarks||[]).forEach(L2=>{ const d2=Math.hypot(L2.p[0]*W-c.x, L2.p[1]*H-c.y); if(d2<ld){ld=d2;lm=L2;} });
+      const total=c.rat+c.team; const ex = best.type==='extract' && bd<170;
+      const kind = c.rat/total>0.62 ? 'rat' : c.team/total>0.62 ? 'team' : 'mix';
+      const reach = state.spawn ? mins(Math.hypot(nodes[state.spawn].p[0]*W-c.x, nodes[state.spawn].p[1]*H-c.y)*(ZD.image.metersX/W)*1.35) : null;
+      return {i:i+1, x:c.x, y:c.y, total, rat:c.rat, team:c.team, kind, t1:quant(c.samples,0.2), t2:quant(c.samples,0.8),
+        where: ex ? `chặn lối vào điểm rút ${best.letter} · ${best.name.split(' (')[0]}` : (lm && ld<110 && ld<bd) ? lm.name : `${bd<120?'tại':'gần'} ${best.name.split(' (')[0].split(' / ')[0]}`, near:best, ex,
+        spawns:[...c.spawns].map(id=>nodes[id].name.split(' ')[0]).sort(), reach}; });
+    const exitList = Object.values(exits).map(e=>{ const n=nodes[e.id]; const total=e.rat+e.team;
+      const reach = state.spawn ? mins(Math.hypot(nodes[state.spawn].p[0]*W-n.p[0]*W, nodes[state.spawn].p[1]*H-n.p[1]*H)*(ZD.image.metersX/W)*1.35) : null;
+      return {id:e.id, n, total, rat:e.rat, team:e.team, kind: e.rat/total>0.62?'rat':e.team/total>0.62?'team':'mix', t1:quant(e.samples,0.2), t2:quant(e.samples,0.8), spawns:[...e.spawns].map(id=>nodes[id].name.split(' ')[0]).sort(), reach}; })
+      .sort((x,y)=>y.total-x.total);
+    return (ambCache[key] = {spots, exits:exitList}); }
+  const ambIcon = (s) => L.divIcon({className:'mkw z-amb', html:`<div class="amb amb-${s.kind}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="#fff" stroke-width="2"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5" stroke="#fff" stroke-width="2"/></svg><b>P${s.i}</b></div>`, iconSize:[30,30], iconAnchor:[15,15]});
+  const KIND = {rat:'bắt chuột', team:'bắt team', mix:'chuột + team'};
+  function drawAmbush(){
+    layers.ambush.clearLayers(); const box=$('#ambush'); if(!box) return;
+    if(!map.hasLayer(layers.ambush)){ box.innerHTML='<p class="hint">Tick lớp "Điểm phục kích" để tính chỗ nhiều đội địch đi qua nhất.</p>'; return; }
+    const res=computeAmbush(), spots=res.spots;
+    spots.forEach(s=>{ const ll=[(1-s.y/H)*H, s.x];
+      L.circle(ll, {radius:40*PXM, color:'#e53935', weight:1.5, dashArray:'3 4', fill:false, interactive:false}).addTo(layers.ambush);
+      L.marker(ll, {icon:ambIcon(s), zIndexOffset:750}).addTo(layers.ambush)
+        .bindPopup(`<b>P${s.i} · ${KIND[s.kind]}</b><br>${s.where}<br>Khung phút ${s.t1.toFixed(0)}–${s.t2.toFixed(0)} · ~${s.total.toFixed(1)} đội đi qua (${s.rat.toFixed(1)} chuột, ${s.team.toFixed(1)} team)<br>Từ spawn: ${s.spawns.join(', ')}${s.reach!=null?`<br>Bạn tới được sau ~${s.reach.toFixed(1)} phút${s.reach<=s.t1?' (kịp)':' (muộn, đón đợt sau)'}`:''}`); });
+    box.innerHTML = '<p class="sub">Mô phỏng tuyến của các đội khác theo xác suất spawn'+(state.spawn?' khi bạn ở '+nodes[state.spawn].name.split(' ')[0]:'')+': nửa là chuột kit rẻ, nửa là team đồ tốt. Số đội là kỳ vọng, không phải chắc chắn.</p><ol class="amblist">'+
+      spots.map(s=>`<li><b>P${s.i} · ${KIND[s.kind]}</b> <span class="sub">${s.where} · phút ${s.t1.toFixed(0)}–${s.t2.toFixed(0)} · ~${s.total.toFixed(1)} đội${s.reach!=null?` · bạn tới sau ~${s.reach.toFixed(1)} ph`:''}</span></li>`).join('')+'</ol>'+
+      '<p class="sub"><b>Camp điểm rút</b> (đội sẽ kéo về đây; nằm chờ cuối khung phút):</p><ul class="amblist">'+res.exits.slice(0,4).map(e=>`<li><b>${e.n.letter} · ${e.n.name.split(' (')[0]}</b> <span class="sub">~${e.total.toFixed(1)} đội (${e.rat.toFixed(1)} chuột, ${e.team.toFixed(1)} team) · tới phút ${e.t1.toFixed(0)}–${e.t2.toFixed(0)}${e.reach!=null?` · bạn tới sau ~${e.reach.toFixed(1)} ph`:''}</span></li>`).join('')+'</ul>'+
+      '<p class="sub">Vì điểm rút cố định luôn ở phía bên kia map, gần như mọi đội phải băng sông ở khu cầu công trường và đi đường bờ Nam trong khoảng phút 5–8: đây là hành lang đông nhất. Đi camp với kit rẻ: chọn chỗ đỏ "bắt chuột", nằm sau vật che, bắn trước rồi lụm; tránh chỗ tím "bắt team" nếu chỉ có giáp cấp 1–2. Mô hình chưa tính kỹ đường phía Bắc qua Admin và đường hầm, nên lưu lượng ở đó có thể bị đánh giá thấp. Điểm camp cộng đồng hay dùng: xem mục 8 bài phân tích.</p>'; }
 
   window.ZDplan = (st)=>{ Object.assign(state, st); if(st.keys) state.keys=new Set(st.keys); if(st.forced) state.forced=new Set(st.forced); return plan(); };
   const lg=$('#legend'); $('#legendBtn').addEventListener('click', ()=>{ lg.hidden=!lg.hidden; });
   drawStatic(); render();
+  window.ZDambush = ()=>{ Object.keys(ambCache).forEach(k=>delete ambCache[k]); return computeAmbush(); };
 })();

@@ -94,6 +94,10 @@
        exactly ONE squad in its "#1" pair (one position or the other, never both) and 2 squads among its 5 other spots */
     squads:{W:{pair:['s4','s5'], random:['s1','s2','s3','s6','s7'], randomSquads:2},
             E:{pair:['s8','s11'], random:['s9','s10','s12','s13','s14'], randomSquads:2}},
+    // named chokepoints used to label ambush spots (px on the 4096 official map, converted like the nodes)
+    landmarks:[['Đầu cầu phía Tây, cạnh công trường',1630,1640],['Đầu cầu phía Đông',1755,1610],['Đường bờ sông phía Đông',1800,1760],
+      ['Thung lũng giữa E2 và E3',2500,2140],['Ngã ba phía Bắc Trung tâm du khách',2810,1860],['Đường vành đai Tây, lối về điểm rút A',1110,1540],
+      ['Ngã ba Nam Trạm biến áp phụ',2120,1880],['Đường Bắc qua bờ hồ',1800,1050],['Bãi đỗ xe Admin',2420,1250]].map(([nm,x,y])=>({name:nm, p:N(x,y)})),
     contract:{minutes:1.5, radius:65},
     passBy:{share:0.6, minutes:0.25, max:3},  // high-value containers within ~20 m of the path: share of value grabbed, minutes each
     dropKeep:0.6,   // drop-backpack exit: share of loot value assumed kept in Safe Box + chest rig (assumption)  // time per in-raid contract (assumption) and how close a station must be to a stop
